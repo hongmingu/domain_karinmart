@@ -54,8 +54,7 @@ def modify_and_move_files(original_dir, target_dir):
                                     line = line.replace(rand_word, f"**{rand_word}**")
                                 else:
                                     line = line.replace(rand_word, f"_{rand_word}_")
-                            new_line = "-" + line
-                            new_f.write(new_line)
+                            new_f.write(line)
 
 # 현재 스크립트의 위치를 찾음
 current_script_path = os.path.dirname(os.path.abspath(__file__))
