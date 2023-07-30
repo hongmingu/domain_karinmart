@@ -1,132 +1,156 @@
 ---
-title: python and mac 맥북 배경화면 설정하기
-description: "맥북 커스터마이징 파이썬으로 배경화면 바꾸기. 파이썬 사용"
+title: swift 핀볼 게임 만들기
+description: "스위프트로 핀볼게임 제작"
 date: July 31 2023
 ---
+간단한 핀볼 게임을 만들려면 SpriteKit과 GameKit과 같은 Apple의 게임 개발 프레임워크를 사용한다.
 
-os와 random을 이용해서 어떤 폴더에서 이미지를 추출하여 랜덤하게 배경화면을 바꾸도록 해야겠다. 
+ SpriteKit은 2D 그래픽을 그리고 물리 엔진을 통해 실제 세계와 같은 움직임을 만들 수 있다. 
+ GameKit는 점수 저장 및 공유, 멀티플레이어 게임 세션, 리더보드 등의 기능을 제공한다.
 
-맥북 배경화면이 밋밋하기 때문에 재미가 없어서 이 코드를 활용하면 더 다채로운 배경화면을 누릴 수 있을 것이다.
+다음은 SpriteKit을 이용한 핀볼게임코드다. 게임의 볼과 패들을 만들고 볼이 패들에 부딪혔을 때의 물리적인 행동을 정의한다.
 
 
+## 기본코드
 ```
-import os
-import random
-import time
-import subprocess
+import SpriteKit
 
-def change_wallpaper():
-    folder = "/path/to/your/images"  # 여기에 이미지 폴더 경로를 입력합니다.
-    image = random.choice(os.listdir(folder))  # 폴더 내에서 무작위 이미지를 선택합니다.
-    image_path = os.path.join(folder, image)
+class GameScene: SKScene, SKPhysicsContactDelegate {
 
-    script = """
-    tell application "Finder"
-        set desktop picture to POSIX file "{}"
-    end tell
-    """.format(image_path)
+    var ball: SKSpriteNode!
+    var paddle: SKSpriteNode!
 
-    subprocess.Popen(["osascript", "-e", script])  # 배경화면 변경
+    override func didMove(to view: SKView) {
+        physicsWorld.contactDelegate = self
 
-while True:
-    change_wallpaper()
-    time.sleep(300)  # 5분마다 이미지 변경
-```
+        ball = SKSpriteNode(color: .red, size: CGSize(width: 50, height: 50))
+        ball.position = CGPoint(x: frame.midX, y: frame.midY)
+        ball.physicsBody = SKPhysicsBody(circleOfRadius: 25)
+        ball.physicsBody?.restitution = 1
+        ball.physicsBody?.friction = 0
+        ball.physicsBody?.applyImpulse(CGVector(dx: 20, dy: 20))
+        addChild(ball)
 
-근데 이 코드는 컴퓨터가 켜져있을때만 실행되고 끝이다.
+        paddle = SKSpriteNode(color: .blue, size: CGSize(width: 150, height: 30))
+        paddle.position = CGPoint(x: frame.midX, y: frame.minY + 125)
+        paddle.physicsBody = SKPhysicsBody(rectangleOf: paddle.size)
+        paddle.physicsBody?.isDynamic = false
+        addChild(paddle)
+    }
 
-컴퓨터가 켜질 때마다 실행되게 하려면 다음과 같이 하자
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let touch = touches.first {
+            var location = touch.location(in: self)
+            
+            if location.x > frame.maxX - 75 {
+                location.x = frame.maxX - 75
+            } else if location.x < frame.minX + 75 {
+                location.x = frame.minX + 75
+            }
+            
+            paddle.position.x = location.x
+        }
+    }
 
-## 부팅될 때마다 실행되게 하기
-
-```
-
-chmod +x /path/to/your/change_wallpaper.command
-
-```
-
-이걸 이용해 스크립트에 실행권한을 부여한다.
-
-그 다음엔
-
-그런 다음 "시스템 환경설정" > "사용자 및 그룹" > "로그인 항목"에서
-
-"+" 버튼을 클릭하고 .command 파일을 선택하여 추가하면 된다.
-
-
-
-## 컴퓨터가 꺼질 때 프로그램 종료할지 물어보게 하기
-
-이걸 하기 위해선 시그널 핸들러를 등록하고 SIGTERM 시그널을 처리해야 한다. 
-
-이 시그널은 시스템이 프로세스를 종료하려고 할 때 전송된다.
-
-```
-import os
-import signal
-import sys
-import tkinter as tk
-from tkinter import messagebox
-
-def signal_handler(sig, frame):
-    # 터미널이 아닌 GUI 창에 메시지를 표시하려면 tkinter를 사용
-    root = tk.Tk()
-    root.withdraw()  # 빈 창을 숨깁니다.
-    if messagebox.askokcancel("Quit", "Your script is still running. Do you want to quit?"):
-        sys.exit(0)
-    else:
-        root.destroy()
-
-# SIGTERM 시그널을 처리하도록 핸들러를 등록합니다.
-signal.signal(signal.SIGTERM, signal_handler)
-
-while True:
-    # 무한 루프를 돌면서 작업.
-    pass
+    func didBegin(_ contact: SKPhysicsContact) {
+        // 볼과 패들이 부딪혔을 때의 물리적인 행동을 정의.
+    }
+}
 
 ```
 
+이 이후엔 부딪혔을 때의 효과를 구현하자
 
-## 알러트 창 커스터마이징
+## 부딪힌 후의 효과 구현
 
-알러트 창까지 커스터마이징 할 것이다.
+
+볼의 색을 변경, 부딪힌 횟수 화면에 표시, 부딪힐 때마다 소리를 내는 기능을 추가하겠다.
+
 
 ```
-import signal
-import sys
-import tkinter as tk
+import AVFoundation
 
-def signal_handler(sig, frame):
-    # 새로운 창을 생성.
-    window = tk.Tk()
-    window.title("Shutdown Alert")
+class GameScene: SKScene, SKPhysicsContactDelegate {
     
-    # 알림 메시지를 추가.
-    label = tk.Label(window, text="Your script is still running. Do you want to quit?")
-    label.pack()
+    // 생략
+    
+    var scoreLabel: SKLabelNode!
+    var score = 0
+    var audioPlayer: AVAudioPlayer?
+    
+    override func didMove(to view: SKView) {
+        
+        // 생략
+        
+        scoreLabel = SKLabelNode(text: "Score: \(score)")
+        scoreLabel.position = CGPoint(x: frame.minX + 100, y: frame.maxY - 50)
+        addChild(scoreLabel)
+        
+        if let soundURL = Bundle.main.url(forResource: "bounce", withExtension: "wav") {
+            do {
+                audioPlayer = try AVAudioPlayer(contentsOf: soundURL)
+            } catch {
+                print("Cannot load audio")
+            }
+        }
+    }
+    
+    func didBegin(_ contact: SKPhysicsContact) {
+        ball.color = UIColor(red: .random(in: 0...1),
+                             green: .random(in: 0...1),
+                             blue: .random(in: 0...1),
+                             alpha: 1.0)
+        
+        score += 1
+        scoreLabel.text = "Score: \(score)"
+        
+        audioPlayer?.play()
+    }
+}
 
-    # 종료 버튼을 추가. 이 버튼을 클릭하면 스크립트가 종료됩니다.
-    quit_button = tk.Button(window, text="Quit", command=sys.exit)
-    quit_button.pack()
-
-    # 계속하기 버튼을 추가. 이 버튼을 클릭하면 알림 창만 닫힙니다.
-    continue_button = tk.Button(window, text="Continue", command=window.destroy)
-    continue_button.pack()
-
-    # 창이 화면의 중앙에 나타나도록 합니다.
-    window.eval('tk::PlaceWindow . center')
-
-    # 창을 보여주고 사용자의 입력
-    window.mainloop()
-
-# SIGTERM 시그널을 처리하도록 핸들러를 등록
-signal.signal(signal.SIGTERM, signal_handler)
-
-while True:
-    # 무한 루프를 돌면서 작업을 수행
-    pass
 
 ```
-이 창에는 "Your script is still running. Do you want to quit?"라는 메시지와 "Quit" 및 "Continue" 버튼이 있다.
 
+우선 음성파일은 직접 준비해야한다.
 
+## 핀볼 볼 크기 설정하기
+
+핀볼 볼 크기도 설정할 수 있다.
+
+```
+let ballRadius: CGFloat = 20.0
+let ball = SKShapeNode(circleOfRadius: ballRadius) // Here, you can adjust the radius as you want.
+
+```
+
+이걸 이용하면 된다.
+
+이걸 이용한 풀 코드다.
+
+```
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    var ball: SKShapeNode!
+    
+    override func didMove(to view: SKView) {
+        let ballRadius: CGFloat = 20.0
+        ball = SKShapeNode(circleOfRadius: ballRadius)
+        ball.position = CGPoint(x: frame.midX, y: frame.midY)
+        ball.fillColor = .red
+        ball.strokeColor = .white
+        ball.lineWidth = 5
+        ball.physicsBody = SKPhysicsBody(circleOfRadius: ballRadius)
+        ball.physicsBody?.affectedByGravity = true
+        ball.physicsBody?.isDynamic = true
+        ball.physicsBody?.restitution = 0.8
+        ball.physicsBody?.friction = 0.5
+        ball.physicsBody?.angularDamping = 0.5
+        ball.physicsBody?.linearDamping = 0.5
+        addChild(ball)
+    }
+    
+    // 나머지 코드
+}
+
+```
+
+restitution 속성을 변경하면 볼의 반발력을 조절할 수 있다.
