@@ -1,0 +1,286 @@
+---
+title: [flutter] - 플러터 미니게임 제작
+description: "플러터로 미니게임 만들어보았습니다."
+date: July 31 2023
+---
+플러터를 이용해 간단한 탭 게임을 만들어 볼 생각이다. 
+다음 코드는 화면을 탭할 때마다 점수를 증가시키는 간단한 게임이다.
+
+한번 탭하면 점수가 증가, 두번 탭하면 점수가 감소, 세번 탭하면 랜덤 점수로 초기화된다.
+
+```
+import 'package:flutter/material.dart';
+import 'dart:math';
+
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: MyHomePage(),
+    );
+  }
+}
+
+class MyHomePage extends StatefulWidget {
+  @override
+  _MyHomePageState createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _counter = 0;
+  Random _random = Random();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Tap Game'),
+      ),
+      body: GestureDetector(
+        onTap: () {
+          setState(() {
+            _counter++;
+          });
+        },
+        onDoubleTap: () {
+          setState(() {
+            _counter--;
+          });
+        },
+        onTripleTap: () {
+          setState(() {
+            _counter = _random.nextInt(100);
+          });
+        },
+        child: Center(
+          child: Text(
+            '$_counter',
+            style: TextStyle(fontSize: 24),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class GestureDetector extends StatelessWidget {
+  final Widget child;
+  final Function onTap;
+  final Function onDoubleTap;
+  final Function onTripleTap;
+
+  int _tapCount = 0;
+
+  GestureDetector({
+    required this.child,
+    required this.onTap,
+    required this.onDoubleTap,
+    required this.onTripleTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (PointerDownEvent details) {
+        _tapCount++;
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (_tapCount == 1) onTap();
+          else if (_tapCount == 2) onDoubleTap();
+          else if (_tapCount == 3) onTripleTap();
+
+          _tapCount = 0;
+        });
+      },
+      child: child,
+    );
+  }
+}
+
+```
+
+Flutter에는 기본적으로 onTripleTap이 없기 때문에 GestureDetector 위젯을 만들어서 세 번 탭하는 이벤트를 구현했다
+
+이 코드는 화면을 탭하면 점수가 1 증가하고 
+더블 탭하면 점수가 1 감소하며 
+트리플 탭하면 랜덤한 숫자 (0에서 99 사이)가 화면에 표시된다.
+
+이제 캐릭터를 추가할 것이다.
+
+## 캐릭터 추가
+
+```
+flutter:
+  assets:
+    - assets/your_image.png
+
+
+```
+
+이 파일을 이용할 것이다.
+
+### 캐릭터 추가 코드
+
+```
+import 'package:flutter/material.dart';
+
+void main() => runApp(MyApp());
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: MyAnimatedBox(),
+        ),
+      ),
+    );
+  }
+}
+
+class MyAnimatedBox extends StatefulWidget {
+  @override
+  _MyAnimatedBoxState createState() => _MyAnimatedBoxState();
+}
+
+class _MyAnimatedBoxState extends State<MyAnimatedBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+  bool _isFlipped = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+    _animation = Tween<double>(begin: 0, end: 100).animate(_controller)
+      ..addListener(() {
+        setState(() {});
+      });
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _controller.forward(from: 0),
+      onDoubleTap: () => setState(() => _isFlipped = !_isFlipped),
+      child: Transform(
+        transform: Matrix4.identity()
+          ..setEntry(3, 2, 0.001) // perspective
+          ..rotateX(0.01 * _animation.value)
+          ..rotateY(_isFlipped ? 3.14 : 0),
+        alignment: FractionalOffset.center,
+        child: Image.asset('assets/your_image.png'),
+      ),
+    );
+  }
+}
+
+
+```
+
+이 코드는 화면을 한 번 클릭하면 캐릭터가 점프하고, 두번 클릭하면 캐릭터가 좌우반전된다.
+
+플립을 이용했다.
+
+## 캐릭터 드래그
+
+캐릭터를 드래그하여 원하는 위치에 위치시키는 코드까지 작성했다.
+
+```
+import 'package:flutter/material.dart';
+
+void main() => runApp(MyApp());
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Stack(
+          children: [
+            MyAnimatedBox(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MyAnimatedBox extends StatefulWidget {
+  @override
+  _MyAnimatedBoxState createState() => _MyAnimatedBoxState();
+}
+
+class _MyAnimatedBoxState extends State<MyAnimatedBox>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+  bool _isFlipped = false;
+  double top = 0.0;
+  double left = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+    _animation = Tween<double>(begin: 0, end: 100).animate(_controller)
+      ..addListener(() {
+        setState(() {});
+      });
+    _controller.repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _controller.forward(from: 0),
+      onDoubleTap: () => setState(() => _isFlipped = !_isFlipped),
+      onPanUpdate: (details) {
+        setState(() {
+          left += details.delta.dx;
+          top += details.delta.dy;
+        });
+      },
+      child: Positioned(
+        top: top,
+        left: left,
+        child: Transform(
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001) // perspective
+            ..rotateX(0.01 * _animation.value)
+            ..rotateY(_isFlipped ? 3.14 : 0),
+          alignment: FractionalOffset.center,
+          child: Image.asset('assets/your_image.png'),
+        ),
+      ),
+    );
+  }
+}
+
+```
+
+제스쳐 디텍터 위젯을 활용했고 포지션드 위젯을 사용해 위치와 드래그를 설정했다.

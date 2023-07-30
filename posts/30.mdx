@@ -1,0 +1,227 @@
+---
+title: KOTLIN - 주변 밝기 측정 앱 만들기
+description: '주변 밝기 측정 및 감도 설정 앱 kotlin으로 제작'
+date: July 29 2023
+---
+
+스마트워치에서 주변 밝기를 측정하려면 빛 센서에 접근해야함. 
+
+스마트워치에 내장된 빛 센서가 없는 경우 이 기능은 작동하지 않을 수 있음. 
+
+이는 디바이스에 따라 다르므로 주의.
+
+안드로이드에서 빛 센서에 접근하려면 SensorManager 클래스를 사용. 
+
+### mainactivity
+```
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import androidx.appcompat.app.AppCompatActivity
+import android.os.Bundle
+
+class MainActivity : AppCompatActivity(), SensorEventListener {
+
+    private lateinit var sensorManager: SensorManager
+    private var light: Sensor? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        light?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type == Sensor.TYPE_LIGHT) {
+            val lightValue = event.values[0]
+            // lightValue 변수는 현재 주변 밝기.
+            // 이 값을 이용하여 원하는 작업을 수행.
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
+        // 센서 정확도가 변경되면 호출. 필요에 따라 구현.
+    }
+}
+
+
+```
+
+이번엔 웨어러블 앱에 특화시켜서 접근해볼 것임.
+
+### 수정된 코드
+```
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.Bundle
+import android.widget.Toast
+import androidx.wear.ambient.AmbientModeSupport
+import androidx.wear.widget.BoxInsetLayout
+import androidx.wear.widget.WearableLinearLayoutManager
+import androidx.wear.widget.WearableRecyclerView
+
+class MainActivity : AmbientModeSupport.AmbientCallbackProvider, SensorEventListener {
+
+    private lateinit var sensorManager: SensorManager
+    private var light: Sensor? = null
+    private lateinit var boxInsetLayout: BoxInsetLayout
+    private lateinit var recyclerView: WearableRecyclerView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        boxInsetLayout = findViewById(R.id.box_inset_layout)
+        recyclerView = findViewById(R.id.recycler_launcher_view)
+
+        recyclerView.layoutManager = WearableLinearLayoutManager(this)
+
+        // Enables Always-on
+        setAmbientEnabled()
+
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+
+        // If there is no light sensor on the device, show a message and return
+        if (light == null) {
+            Toast.makeText(this, "This device doesn't support Light sensor!", Toast.LENGTH_SHORT).show()
+            return
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        light?.also { light ->
+            sensorManager.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type == Sensor.TYPE_LIGHT) {
+            val lightValue = event.values[0]
+            // lightValue 변수는 현재 주변 밝기를 담고 있.
+            // 여기서 원하는 처리 - 예를 들어 화면의 색상이나 밝기를 조절하는 등...
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
+        // 센서 정확도가 변경되면 호출됩. 일반적으로 이 메서드는 센서 정확도에 따라 처리를 달리하거나, 정확도가 너무 낮을 경우 경고 메시지를 보여주는 등에 사용됨.
+        if (accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
+            Toast.makeText(this, "Light sensor accuracy is unreliable, readings may be incorrect!", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+```
+
+그럼 이제 기기 흔들림에 따라 밝기도 연관지어서 작동하는 코드를 작성해볼 것임.
+
+
+### 흔들림에 따라 밝기도 연동
+
+SensorEventListener를 이용할 것임. 가속도 센서를 추가해서 센서의 변화를 밝기에 적용할 것임.
+
+```
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.Bundle
+import android.widget.Toast
+import androidx.wear.ambient.AmbientModeSupport
+
+class MainActivity : AmbientModeSupport.AmbientCallbackProvider, SensorEventListener {
+
+    private lateinit var sensorManager: SensorManager
+    private var light: Sensor? = null
+    private var accelerometer: Sensor? = null
+    private val shakeThreshold = 10f  // shake threshold value, you may need to calibrate this
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
+        // Enables Always-on
+        setAmbientEnabled()
+
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+
+        // If there is no light sensor or accelerometer on the device, show a message and return
+        if (light == null || accelerometer == null) {
+            Toast.makeText(this, "This device doesn't support Light or Accelerometer sensor!", Toast.LENGTH_SHORT).show()
+            return
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        light?.also { light ->
+            sensorManager.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+        accelerometer?.also { accelerometer ->
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        when (event.sensor.type) {
+            Sensor.TYPE_LIGHT -> {
+                val lightValue = event.values[0]
+                // lightValue 변수는 현재 주변 밝기
+                // 화면의 색상이나 밝기를 조절하는 등...
+            }
+            Sensor.TYPE_ACCELEROMETER -> {
+                val x = event.values[0]
+                val y = event.values[1]
+                val z = event.values[2]
+
+                val acceleration = Math.sqrt((x * x + y * y + z * z).toDouble()).toFloat()
+
+                if (acceleration > shakeThreshold) {
+                    // Detected shake movement, adjust brightness here...
+                }
+            }
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
+        // 센서 정확도가 변경되면 호출. 일반적으로 이 메서드는 센서 정확도에 따라 처리를 달리하거나, 정확도가 너무 낮을 경우 경고 메시지를 보여주는 등에 사용.
+        if (accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
+            Toast.makeText(this, "Sensor accuracy is unreliable, readings may be incorrect!", Toast.LENGTH_SHORT).show()
+        }
+    }
+}
+
+```
+
+이러면 주변 흔들림에 따라 밝기도 조정된다.
+

@@ -1,0 +1,130 @@
+---
+title: [go lang] - 고 언어로 음악 플레이어 만들기
+description: "고 언어로 음악 플레이어를 제작합니다."
+date: July 31 2023
+---
+Go 언어는 저수준의 파일 접근이 가능하기 때문에 오디오 파일에 직접 접근하고 처리하는 것이 가능하다. 
+
+그러나 일반적으로 오디오 처리와 재생은 복잡한 과정이므로 일반적으로 외부 라이브러리를 사용하자.
+
+Go 언어에서 오디오 재생에는 beep 라이브러리를 사용할 수 있다. 
+beep 라이브러리는 오디오 파일 재생과 함께 오디오 데이터 스트림 변환을 지원한다. 
+이 라이브러리는 WAV, MP3, FLAC 등 다양한 오디오 형식을 지원한다.
+
+
+```
+package main
+
+import (
+	"github.com/faiface/beep"
+	"github.com/faiface/beep/mp3"
+	"github.com/faiface/beep/speaker"
+	"os"
+	"time"
+)
+
+func main() {
+	f, err := os.Open("yourfile.mp3")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	streamer, format, err := mp3.Decode(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer streamer.Close()
+
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+
+	done := make(chan bool)
+	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
+		done <- true
+	})))
+
+	<-done
+}
+
+```
+## 역재생, 배속 재생 기능 구현
+
+go lang으로 역재생, 배속 재생기능을 구현하긴 조금 어렵다. 그래서 파이썬으로 제작 후 포팅하겠다.
+
+```
+from pydub import AudioSegment
+
+# 오디오 파일 로드
+song = AudioSegment.from_wav("your_audio_file.wav")
+
+# 역재생
+reversed_song = song.reverse()
+
+# 역재생한 노래를 파일로 저장
+reversed_song.export("reversed_song.wav", format='wav')
+
+# 배속(2배 빠르게)
+fast_song = song.speedup(playback_speed=2.0)
+
+# 배속한 노래를 파일로 저장
+fast_song.export("fast_song.wav", format='wav')
+
+
+```
+
+이제 이 내용을 고 언어에서 가져와서 실행하려고 한다.
+
+다음과같이 os/exec, fmt를 이용하자
+
+```
+package main
+
+import (
+    "os/exec"
+    "fmt"
+)
+
+func main() {
+    cmd := exec.Command("python", "process_audio.py")
+
+    output, err := cmd.Output()
+
+    if err != nil {
+        fmt.Println("Error: ", err)
+    }
+
+    fmt.Println(string(output))
+}
+
+```
+
+## 이제 다른 이름으로 저장
+
+다른 이름으로 저장해서 파일을 리스팅시켜서 보관하도록 한다.
+
+```
+package main
+
+import (
+    "os"
+    "log"
+)
+
+func main() {
+    oldPath := "path/to/old/file.wav"
+    newPath := "path/to/new/file.wav"
+
+    err := os.Rename(oldPath, newPath)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+```
+
+Rename함수를 이용하면 되는데 매개변수에 주의하자
+이 코드는 oldPath에 있는 파일을 newPath로 이동시킨다. 
+
+이 경우 파일의 이름도 변경될 수 있다. 
+예를 들어, oldPath가 /home/user/old_file.wav이고 newPath가 /home/user/new_file.wav라면 이 코드는 old_file.wav를 new_file.wav로 이름을 변경한다.
+
+

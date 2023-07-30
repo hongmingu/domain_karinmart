@@ -1,0 +1,72 @@
+---
+title: [perl] - 펄 투두앱 만들기
+description: "펄 언어로 투두앱을 만듭니다."
+date: July 31 2023
+---
+Perl로 콘솔 기반의 간단한 TODO 앱을 만들어 보았다.
+
+작업추가, 보기, 제거, 종료 이 기능을 구현했다. 실제 실행시엔 이 코드를 쓰면 된다.
+
+
+```
+perl todo_app.pl
+
+```
+
+
+코드는 이렇다.
+
+### 실제 코드
+
+```
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+print "Welcome to the TODO app!\n";
+
+my @tasks;
+
+while (1) {
+    print "What would you like to do?\n";
+    print "1. Add task\n";
+    print "2. View tasks\n";
+    print "3. Remove task\n";
+    print "4. Exit\n";
+
+    my $choice = <>;
+    chomp $choice;
+
+    if ($choice == 1) {
+        print "Enter task: ";
+        my $task = <>;
+        chomp $task;
+        push @tasks, $task;
+        print "Task added.\n";
+    } elsif ($choice == 2) {
+        print "Your tasks:\n";
+        for my $i (0..$#tasks) {
+            print "$i: $tasks[$i]\n";
+        }
+    } elsif ($choice == 3) {
+        print "Enter the number of the task to remove: ";
+        my $task_num = <>;
+        chomp $task_num;
+        if ($task_num >= 0 && $task_num <= $#tasks) {
+            splice(@tasks, $task_num, 1);
+            print "Task removed.\n";
+        } else {
+            print "Invalid task number.\n";
+        }
+    } elsif ($choice == 4) {
+        print "Goodbye!\n";
+        last;
+    } else {
+        print "Invalid choice.\n";
+    }
+}
+
+```
+
+간단한 투두앱이지만 펄로 만들었다는 점에서 의의가 있다.

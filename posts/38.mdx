@@ -1,0 +1,142 @@
+---
+title: [perl] - 데이터베이스 관리 스크립트 만들기
+description: "펄 언어로 간단한 데이터베이스 관리 스크립트 제작."
+date: July 31 2023
+---
+
+Perl로 DBI모듈을 이용해서 SQLite 디비와 상호작용하는 스크립트를 만들어봤다.
+기본적인 CRUD기능을 구현했다.
+
+```
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use DBI;
+
+# 데이터베이스 연결 생성
+my $dbh = DBI->connect("dbi:SQLite:dbname=test.db","","");
+
+# 테이블 생성
+$dbh->do("CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)");
+
+# 데이터 삽입
+$dbh->do("INSERT INTO test (name, age) VALUES ('John Doe', 30)");
+$dbh->do("INSERT INTO test (name, age) VALUES ('Jane Doe', 25)");
+
+# 데이터 조회
+my $sth = $dbh->prepare("SELECT * FROM test");
+$sth->execute();
+
+while (my $row = $sth->fetchrow_hashref()) {
+    print "ID: $row->{id}, Name: $row->{name}, Age: $row->{age}\n";
+}
+
+# 데이터베이스 연결 종료
+$dbh->disconnect();
+
+```
+
+코드는 이렇다.
+이 스크립트는 SQLite 데이터베이스를 사용한다. 
+만약 다른 데이터베이스를 사용하려면 적절한 DBD 모듈을 설치하고 연결 문자열을 변경해야 한다.
+
+스크립트를 실행하면 'test'라는 테이블을 만들고, 'John Doe'와 'Jane Doe'라는 두 개의 레코드를 삽입한다. 
+그 후 테이블의 모든 레코드를 조회하고 출려한다.
+
+
+### 간단한 예외처리
+
+1. die이용
+```
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $value = -1;
+
+if ($value < 0) {
+    die "Value cannot be negative\n";
+}
+
+```
+2. eval이용
+
+```
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $value = -1;
+
+eval {
+    if ($value < 0) {
+        die "Value cannot be negative\n";
+    }
+};
+
+if ($@) {
+    print "Caught an exception: $@\n";
+}
+
+```
+3. dbi
+```
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use DBI;
+
+my $dbh = DBI->connect("dbi:SQLite:dbname=test.db","","", { RaiseError => 1 });
+
+eval {
+    $dbh->do("CREATE TABLE IF NOT EXISTS test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)");
+    $dbh->do("INSERT INTO test (name, age) VALUES ('John Doe', 30)");
+};
+
+if ($@) {
+    print "Caught an exception: $@\n";
+}
+
+```
+4. 파일열기에러
+```
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my $filename = "non_existent_file.txt";
+
+open(my $fh, "<", $filename) or die "Cannot open $filename: $!\n";
+
+```
+5. 존재하지 않는 해시키 처리
+```
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+my %hash = (
+    "key1" => "value1",
+    "key2" => "value2"
+);
+
+my $key = "key3";
+
+if (exists $hash{$key}) {
+    print "$hash{$key}\n";
+} else {
+    print "Key $key does not exist in hash\n";
+}
+
+```
+위의 예제들에서 die는 예외를 발생시키며 eval은 블록 내에서 발생한 예외를 잡는다. 
+if ($@) 구문은 eval 블록 내에서 예외가 발생했는지를 확인한다. 
+open 함수는 실패하면 undef를 반환하고 $! 변수에 에러 메시지를 설정한다. 
+이를 이용해 파일 열기 에러를 처리했다. 
+마지막 예제에서는 exists 함수를 사용해 해시에 키가 존재하는지를 봤다.
