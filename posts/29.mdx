@@ -1,0 +1,133 @@
+---
+title: PYTHON - 씨게이트 외장하드에서 파일 부르기, 조작 및 변경
+description: '씨게이트 외장하드 파일 불러온 후 이름 바꾸기'
+date: July 29 2023
+---
+
+파이썬 코드를 사용하여 외장 하드 드라이브를 직접 연결하는 것은 불가능함.
+
+외장 하드 드라이브와 같은 물리적인 장치는 운영체제와 하드웨어 드라이버가 있어야 함.
+
+그러므로 사용자레벨이라고 할 수 있는 코드인 파이썬으로 제어할 수 있는 범위를 넘어섬.
+
+외장 하드 드라이브를 맥북에 연결하기 위해서는 해당 드라이브를 맥북의 USB 포트에 일단 연결해야 함.
+
+근데 요즘은 라이트닝 포트도 많으므로 젠더를 이용하던지 어떻게든 연결을 우선 해야함.
+
+드라이브가 연결되면, 운영 체제가 해당 장치를 인식하고, 필요한 드라이버로 외장하드를 마운트함.
+
+파이썬은 이렇게 이미 연결된 외장 하드 드라이브의 파일 시스템을 읽거나 쓰는데 사용될 수 있음.
+
+예를 들어, 외장 하드 드라이브의 내용을 나열하려면 다음과 같은 코드를 사용할 수 있음
+
+## 외장하드 드라이브 내용 나열
+
+```
+import os
+
+# 외장하드가 마운트된 경로. 대체로 '/Volumes/<하드드라이브이름>' 이런 형태
+hard_drive_path = '/Volumes/Your_Hard_Drive_Name'
+
+# 해당 경로에서 파일 및 디렉토리 목록 출력
+for file_name in os.listdir(hard_drive_path):
+    print(file_name)
+
+```
+
+우선 이렇게 하면 파일들을 불러올 수 있음.
+
+그 다음엔 파일들을 이용해서 섬세한 조작을 해볼 것임
+
+## 이름바꾸고 영상파일은 재생하는 코드
+
+```
+
+# 외장하드가 마운트된 경로. 대체로 '/Volumes/<하드드라이브이름>' 이런 형태
+hard_drive_path = '/Volumes/Your_Hard_Drive_Name'
+video_exts = ['.mp4', '.avi']  # Add or remove video file extensions as needed
+
+for file_name in os.listdir(hard_drive_path):
+    print(file_name)
+
+    # Check if the file is a video file
+    ext = os.path.splitext(file_name)[-1]
+    if ext in video_exts:
+        old_file_path = os.path.join(hard_drive_path, file_name)
+        new_file_path = os.path.join(hard_drive_path, 'new_' + file_name)  # Change this as you want
+
+        # Rename the video file
+        os.rename(old_file_path, new_file_path)
+
+        # Play the video file using VLC
+        subprocess.call(['vlc', new_file_path])
+
+
+```
+
+## 불러온 파일들을 원하는 블러처리를 하여 다시 저장하는 코드
+
+```
+# 외장하드가 마운트된 경로. 대체로 '/Volumes/<하드드라이브이름>' 이런 형태
+hard_drive_path = '/Volumes/Your_Hard_Drive_Name'
+image_exts = ['.jpg', '.png', '.jpeg']  # Add or remove image file extensions as needed
+
+for file_name in os.listdir(hard_drive_path):
+    print(file_name)
+
+    # Check if the file is an image file
+    ext = os.path.splitext(file_name)[-1]
+    if ext in image_exts:
+        image_path = os.path.join(hard_drive_path, file_name)
+        image = Image.open(image_path)
+
+        # Apply blur filter to the image
+        blurred_image = image.filter(ImageFilter.BLUR)
+
+        # Save the blurred image with a new name
+        blurred_image_path = os.path.join(hard_drive_path, 'blurred_' + file_name)
+        blurred_image.save(blurred_image_path)
+
+```
+
+여기서 ImageFilter.BLUR는 상대적으로 약한 블러 효과를 제공함.
+더 강력한 블러 효과를 원한다면 ImageFilter.GaussianBlur(radius)를 사용.
+radius는 블러의 강도.
+이 값이 클수록 더 강한 블러 효과.
+
+## 불러온 파일들이 pdf일 경우 excel로 변환시켜주는 코드를
+
+우선 라이브러리를 설치
+
+```
+pip install tabula-py pandas openpyxl
+```
+
+## tabula를 이용해서 코드 작성
+
+```
+import os
+import tabula
+import pandas as pd
+
+hard_drive_path = '/Volumes/Your_Hard_Drive_Name'  # 외장하드가 마운트된 경로
+pdf_ext = '.pdf'
+
+for file_name in os.listdir(hard_drive_path):
+    ext = os.path.splitext(file_name)[-1]
+    if ext == pdf_ext:
+        pdf_path = os.path.join(hard_drive_path, file_name)
+        df_list = tabula.read_pdf(pdf_path, pages='all')  # 모든 페이지에서 표를 추출합니다.
+
+        # 각 DataFrame을 별도의 시트에 저장합니다.
+        with pd.ExcelWriter(pdf_path.replace('.pdf', '.xlsx')) as writer:
+            for i, df in enumerate(df_list):
+                df.to_excel(writer, sheet_name=f'Sheet {i+1}', index=False)
+
+
+
+
+```
+
+
+이상으로 외장하드 파일 다루는 법을 마침.
+
