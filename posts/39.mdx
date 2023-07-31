@@ -1,0 +1,183 @@
+---
+title: perl로 네트워크 패킷 분석 후 브라우저에서 확인하기
+description: "펄 네트워크 패킷 분석 및 브라우저에서 확인까지"
+date: July 31 2023
+---
+Perl로 네트워크 패킷을 분석하는 작업은 가능하지만
+ 브라우저 창에서 직접 확인하는 것은 복잡한 과정이 필요하다. 
+ 
+ 패킷 분석은 일반적으로 네트워크 레벨에서 수행되는데 
+ 브라우저는 주로 웹 서비스와 상호작용하는 도구이므로 조금별개다.
+
+따라서, Perl로 네트워크 패킷을 분석하고
+ 그 결과를 웹 브라우저에서 확인하기 위해서 자바스크립트도 사용할 것이다.
+
+1. Perl을 사용하여 네트워크 패킷을 분석한다. 
+이 작업은 Net::Pcap, Net::Packet 등의 모듈을 활용할 것이다.
+2. 분석한 패킷 정보를 웹 페이지에 표시하기 위해 웹 서버를 구축한다. 
+이 작업은 Perl의 Mojolicious, Dancer 등의 웹 프레임워크를 사용할 것이다.
+3. 웹 페이지를 구성하여 분석 정보를 표시한다. 
+이 작업은 HTML, CSS, JavaScript 등의 웹 기술을 사용한다.
+
+## Net::Pcap::Easy 기본 예제
+
+```
+use Net::Pcap;
+use Net::Pcap::Easy;
+
+my $npe = Net::Pcap::Easy->new(
+    dev              => "eth0",
+    filter           => "",
+    packets_per_loop => 10,
+    bytes_to_capture => 1024,
+    promiscuous      => 0,
+);
+
+$npe->tcp_syn (
+    sub {
+        my ($npe, $ether, $ip, $tcp, $header ) = @_;
+        print "SYN packet seen from $ip->{src_ip}:$tcp->{src_port}\n";
+    }
+);
+
+$npe->run();
+
+```
+
+이제 웹 프레임워크에 연결하자
+
+## Mojolicious 를 이용한 프레임워크 작업
+
+```
+use Mojolicious::Lite;
+use Net::Pcap;
+use Net::Pcap::Easy;
+
+get '/packets' => sub {
+    my $c = shift;
+    my @packets;
+
+    my $npe = Net::Pcap::Easy->new(
+        dev              => "eth0",
+        filter           => "",
+        packets_per_loop => 10,
+        bytes_to_capture => 1024,
+        promiscuous      => 0,
+    );
+
+    $npe->tcp_syn (
+        sub {
+            my ($npe, $ether, $ip, $tcp, $header ) = @_;
+            push @packets, {
+                src_ip => $ip->{src_ip},
+                src_port => $tcp->{src_port},
+            };
+        }
+    );
+
+    $npe->run();
+
+    $c->render(json => \@packets);
+};
+
+app->start;
+
+```
+
+/packets 경로에서 REST통신이 발생한다.
+이 스크립트는 TCP SYN 패킷을 감지하고 해당 패킷 정보를 /packets 엔드포인트를 통해 JSON 형식으로 반환한다.
+
+이 스크립트를 실행하려면 먼저 Mojolicious와 Net::Pcap::Easy 모듈이 설치되어 있어야 한다. 
+이 스크립트를 실행한 후 웹 브라우저에서 http://localhost:3000/packets 주소를 방문하면 패킷 정보를 확인할 수 있다.
+
+## 가독성 높이기
+
+가독성을 높여야 할 것 같다. 알아보기 쉽지 않기 때문이다.
+
+```
+use Mojolicious::Lite;
+use Net::Pcap;
+use Net::Pcap::Easy;
+
+get '/packets' => sub {
+    my $c = shift;
+    my @packets;
+
+    my $npe = Net::Pcap::Easy->new(
+        dev              => "eth0",
+        filter           => "",
+        packets_per_loop => 10,
+        bytes_to_capture => 1024,
+        promiscuous      => 0,
+    );
+
+    $npe->tcp_syn (
+        sub {
+            my ($npe, $ether, $ip, $tcp, $header ) = @_;
+            push @packets, {
+                'Source IP' => $ip->{src_ip},
+                'Source Port' => $tcp->{src_port},
+            };
+        }
+    );
+
+    $npe->run();
+
+    $c->render(json => \@packets);
+};
+
+app->start;
+
+```
+
+이 코드를 사용하면 가독성이 올라가게 된다. 
+
+이제 각 패킷은 Source IP와 Source Port라는 레이블로 구성된 JSON 으로 표시된다. 
+이렇게하면 웹 브라우저나 JSON 뷰어에서 보기가 더 쉽다.
+
+
+## 패킷별로 상세정보 표기하기
+
+패킷별로 상세정보도 표기해서 편리하게 볼 수 있게 하자.
+
+```
+use Mojolicious::Lite;
+use Net::Pcap;
+use Net::Pcap::Easy;
+
+get '/packets' => sub {
+    my $c = shift;
+    my @packets;
+
+    my $npe = Net::Pcap::Easy->new(
+        dev              => "eth0",
+        filter           => "",
+        packets_per_loop => 10,
+        bytes_to_capture => 1024,
+        promiscuous      => 0,
+    );
+
+    $npe->tcp_syn (
+        sub {
+            my ($npe, $ether, $ip, $tcp, $header ) = @_;
+            push @packets, {
+                'Source IP' => $ip->{src_ip},
+                'Source Port' => $tcp->{src_port},
+                'Packet Length' => length(${$header}),
+                'Data Type' => ref($header)
+            };
+        }
+    );
+
+    $npe->run();
+
+    $c->render(json => \@packets);
+};
+
+app->start;
+
+```
+
+
+이 코드를 활용하면  출발지 IP, 출발지 포트, 패킷의 길이, 데이터의 형식 등을 같이 출력하게 된다.
+
