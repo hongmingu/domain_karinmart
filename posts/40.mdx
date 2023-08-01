@@ -1,0 +1,305 @@
+---
+title: cobol로 숫자나 텍스트 데이터 기반 학습
+description: "cobol로 여러가지 예제 따라하며 만들어보기"
+date: August 1 2023
+---
+### COBOL이란
+
+COBOL은 기업용으로 많이 쓰이며 비즈니스, 금융, 행정 영역에서 사용되는 데 유용하다.
+게임 개발에는 거의 사용되지 않습니다. 여기선 게임을 만드는 것이 아니고 게임 비스무리 하게 만들어서 공부하는 데 도움을 주고 싶었다.
+COBOL은 절차적 프로그래밍 언어로 복잡한 그래픽 처리나 사용자 입력 이벤트 처리 등이 불편하거나 불가능할 수 있어서 쉬운 방법을 찾으려고 했다.
+
+### COBOL로 만들 컨셉
+그래서 아주 간단한 텍스트 기반 게임인 숫자 맞추기 게임을 만들어 볼 것이다. 
+이 게임은 컴퓨터가 1부터 100 사이의 숫자를 하나 생각하고 사용자는 그 숫자를 맞추는 형식이다.
+
+#### 기본 예제
+```
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. GUESSINGGAME.
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01 SECRET-NUMBER PIC 9(2) VALUE 42.
+       01 USER-GUESS PIC 9(2).
+       PROCEDURE DIVISION.
+       DISPLAY "Guess a number between 1 and 100."
+       PERFORM UNTIL USER-GUESS = SECRET-NUMBER
+           ACCEPT USER-GUESS
+           IF USER-GUESS < SECRET-NUMBER
+               DISPLAY "Too low! Guess again."
+           ELSE IF USER-GUESS > SECRET-NUMBER
+               DISPLAY "Too high! Guess again."
+           END-IF
+       END-PERFORM
+       DISPLAY "Correct! The number was " SECRET-NUMBER
+       STOP RUN.
+
+```
+
+이 프로그램은 SECRET-NUMBER를 정의하고 사용자로부터 숫자를 입력 받아 USER-GUESS에 저장한다.
+만약 USER-GUESS가 SECRET-NUMBER보다 낮으면 "Too low! Guess again."을 보여주고
+만약 USER-GUESS가 SECRET-NUMBER보다 높으면 "Too high! Guess again."을 보여준다. 
+USER-GUESS와 SECRET-NUMBER가 같을 때까지 이를 반복하고
+같아지면 "Correct! The number was "와 SECRET-NUMBER를 출력한 후 프로그램을 종료한다.
+
+#### 출력되는 글자 색 바꾸기
+
+COBOL은 주로 터미널 환경에서 실행되는 프로그램을 위해 설계되었고 터미널 환경에서는 일반적으로 색상을 제어하는 기능이 제한적이다.
+ 색상을 제어하려면 특정 터미널 환경을 대상으로 하는 특정 코드를 사용해야 한다.
+
+실행환경이 Unix라면 ANSI 이스케이프 코드를 사용하여 텍스트 색상을 제어할 수 있다. 
+하지만 COBOL에서는 이런 코드를 직접 제어하는 것이 어렵다. 
+"따라서 COBOL로 색상을 제어하는 프로그램을 작성하는 것은 일반적으로 권장되지 않는다." 지만 해내야 하지 않겠나?
+
+
+ANSI escape 코드를 사용하여 Unix 계열의 터미널에서 텍스트 색상을 제어할 수 있다. 
+ANSI escape 코드는 특정 텍스트 블록에 스타일을 적용하기 위해 텍스트 블록 앞에 위치하는 특별한 문자열이다. 
+
+빨간색: "\033[31m"
+파란색: "\033[34m"
+이를 위 코드에 적용해보자. 
+이 코드는 숫자가 짝수일 때는 빨간색으로, 홀수일 때는 파란색으로 출력된다.
+
+```
+IDENTIFICATION DIVISION.
+PROGRAM-ID. NumberPrinter.
+
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+01 Num PIC 9(2) VALUE 1.
+01 ColorRed PIC X(5) VALUE X"1B5B33316D".    *> ANSI code for red
+01 ColorBlue PIC X(5) VALUE X"1B5B33346D".   *> ANSI code for blue
+01 ResetColor PIC X(4) VALUE X"1B5B306D".    *> ANSI code to reset color
+
+PROCEDURE DIVISION.
+DISPLAY "Starting to print numbers."
+Perform Until Num > 10
+    If FUNCTION MOD(Num, 2) = 0 Then
+        DISPLAY FUNCTION CHAR(ColorRed) "Number " Num " is even." FUNCTION CHAR(ResetColor)
+    Else
+        DISPLAY FUNCTION CHAR(ColorBlue) "Number " Num " is odd." FUNCTION CHAR(ResetColor)
+    End-If
+    Add 1 To Num
+End-Perform.
+DISPLAY "Finished printing numbers."
+STOP RUN.
+
+```
+
+위 코드는 COBOL의 표준 기능만 사용하여 작성되었기 때문에 대부분의 COBOL 컴파일러에서 작동할 것이다.
+ 하지만 터미널이 ANSI escape 코드를 지원하지 않거나 터미널의 기본 텍스트 색상이 빨간색이나 파란색인 경우에는 이 코드가 제대로 작동하지 않을 수 있다.
+
+
+#### 영단어 암기 도우미 앱 만들어보기
+
+COBOL로 간단한 영어 단어 암기 프로그램을 만들어 보자.
+이 프로그램은 사용자에게 영어 단어와 그 뜻을 보여주고 사용자에게 단어의 뜻을 입력하게 한다.
+사용자가 단어의 뜻을 제대로 입력하면 다음 단어로 넘어가고 아니면 같은 단어를 반복해서 보여준다.
+
+
+```
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. WORD-TEST.
+
+       DATA DIVISION.
+       WORKING-STORAGE SECTION.
+       01 WORD-TABLE.
+          05 WORD-ENTRY OCCURS 3 TIMES INDEXED BY WORD-IDX.
+             10 WORD-ENGLISH    PIC X(10).
+             10 WORD-KOREAN     PIC X(10).
+       01 USER-INPUT   PIC X(10).
+       01 CURRENT-IDX  PIC 9(1) VALUE 1.
+
+       PROCEDURE DIVISION.
+       BEGIN.
+           MOVE 'apple'     TO WORD-ENGLISH(1)
+           MOVE '사과'      TO WORD-KOREAN(1)
+           MOVE 'banana'    TO WORD-ENGLISH(2)
+           MOVE '바나나'     TO WORD-KOREAN(2)
+           MOVE 'cherry'    TO WORD-ENGLISH(3)
+           MOVE '체리'      TO WORD-KOREAN(3)
+
+           PERFORM UNTIL CURRENT-IDX > 3
+               DISPLAY "The word is: " WORD-ENGLISH(CURRENT-IDX)
+               DISPLAY "What's the meaning of the word in Korean?"
+               ACCEPT USER-INPUT
+               IF USER-INPUT = WORD-KOREAN(CURRENT-IDX) THEN
+                   DISPLAY "Correct!"
+                   ADD 1 TO CURRENT-IDX
+               ELSE
+                   DISPLAY "Wrong! Try again."
+               END-IF
+           END-PERFORM
+
+           DISPLAY "All words have been studied."
+
+           STOP RUN.
+
+```
+
+
+#### 데이터베이스 연동해서 발전시키기
+
+##### 파일에서 데이터 읽기
+COBOL에서는 파일을 열어 데이터를 읽을 수 있다.
+OPEN INPUT 명령을 사용해 파일을 열고 READ 명령을 사용해 데이터를 읽을 수 있다. 
+또한 AT END 절을 사용해 파일의 끝에 도달했을 때의 동작을 정의할 수 있다.
+
+##### 대소문자 구분 없이 문자열 비교하기
+COBOL에서는 문자열을 비교할 때 기본적으로 대소문자를 구분한다. 
+그러나 FUNCTION UPPER-CASE를 사용해 사용자의 입력을 모두 대문자로 변환한 후 비교하면 대소문자 구분 없이 문자열을 비교할 수 있다.
+
+##### 틀린 단어를 따로 저장하기
+틀린 단어를 따로 저장하기 위해서는 틀린 단어를 저장할 데이터 구조가 필요하다. 
+이를 위해 배열을 사용할 수 있다. 
+사용자가 단어의 뜻을 틀리면 해당 단어를 배열에 추가하고 모든 단어를 테스트한 후 틀린 단어 목록을 출력할 수 있다.
+
+```
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. WORD-TEST.
+
+       DATA DIVISION.
+       FILE SECTION.
+       FD  WORD-FILE.
+       01  WORD-RECORD.
+           05 WORD-ENGLISH    PIC X(10).
+           05 WORD-KOREAN     PIC X(10).
+       WORKING-STORAGE SECTION.
+       01 USER-INPUT   PIC X(10).
+       01 WRONG-WORDS.
+           05 WRONG-WORD OCCURS 100 TIMES INDEXED BY WRONG-IDX.
+               10 WRONG-WORD-ENGLISH PIC X(10).
+       01 WRONG-IDX   PIC 9(3) VALUE 1.
+
+       PROCEDURE DIVISION.
+       BEGIN.
+           OPEN INPUT WORD-FILE
+
+           READ WORD-FILE
+               AT END DISPLAY "No more words."
+           END-READ
+
+           PERFORM UNTIL WORD-FILE STATUS = 'EOF'
+               DISPLAY "The word is: " WORD-ENGLISH
+               DISPLAY "What's the meaning of the word in Korean?"
+               ACCEPT USER-INPUT
+               IF FUNCTION UPPER-CASE(USER-INPUT) = FUNCTION UPPER-CASE(WORD-KOREAN) THEN
+                   DISPLAY "Correct!"
+               ELSE
+                   DISPLAY "Wrong! Try again."
+                   MOVE WORD-ENGLISH TO WRONG-WORD-ENGLISH(WRONG-IDX)
+                   ADD 1 TO WRONG-IDX
+               END-IF
+               READ WORD-FILE
+                   AT END DISPLAY "No more words."
+               END-READ
+           END-PERFORM
+
+           DISPLAY "The words you got wrong are:"
+           PERFORM VARYING WRONG-IDX FROM 1 BY 1 UNTIL WRONG-IDX > 100
+               DISPLAY WRONG-WORD-ENGLISH(WRONG-IDX)
+           END-PERFORM
+
+           CLOSE WORD-FILE
+           STOP RUN.
+
+```
+
+#### 선형회귀 구현
+
+
+선형 회귀는 입력 변수x와 출력 변수y 사이의 관계를 모델링하는데 사용된다.
+
+```
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. LINEAR-REGRESSION.
+
+       DATA DIVISION.
+       FILE SECTION.
+       FD  INPUT-FILE.
+       01  DATA-RECORD.
+           05 X-VALUE PIC 9(5)V9(5).
+           05 Y-VALUE PIC 9(5)V9(5).
+       WORKING-STORAGE SECTION.
+       01 SUM-X  PIC 9(5)V9(5) VALUE 0.
+       01 SUM-Y  PIC 9(5)V9(5) VALUE 0.
+       01 SUM-XX PIC 9(5)V9(5) VALUE 0.
+       01 SUM-XY PIC 9(5)V9(5) VALUE 0.
+       01 N      PIC 9(3)      VALUE 0.
+       01 A      PIC 9(5)V9(5).
+       01 B      PIC 9(5)V9(5).
+
+       PROCEDURE DIVISION.
+       BEGIN.
+           OPEN INPUT INPUT-FILE
+           READ INPUT-FILE
+               AT END DISPLAY "No more data."
+           END-READ
+
+           PERFORM UNTIL INPUT-FILE STATUS = 'EOF'
+               ADD 1 TO N
+               ADD X-VALUE TO SUM-X
+               ADD Y-VALUE TO SUM-Y
+               COMPUTE SUM-XX = SUM-XX + X-VALUE ** 2
+               COMPUTE SUM-XY = SUM-XY + X-VALUE * Y-VALUE
+               READ INPUT-FILE
+                   AT END DISPLAY "No more data."
+               END-READ
+           END-PERFORM
+
+           COMPUTE B = (N * SUM-XY - SUM-X * SUM-Y) / (N * SUM-XX - SUM-X ** 2)
+           COMPUTE A = (SUM-Y - B * SUM-X) / N
+
+           DISPLAY "The linear regression model is Y = " A " + " B " * X."
+
+           CLOSE INPUT-FILE
+           STOP RUN.
+
+```
+
+이 코드는 오류 처리나 예외 처리를 하지 않았다. 실제로는 데이터가 유효한지, 분모가 0이 아닌지 등을 검사해야 하고 이렇게 만들 수 있을 것이다.
+
+#### 데이터 유효성, 분모 분자 검사
+
+데이터가 유효한 숫자인지 검사하고 만약 유효하지 않은 데이터를 발견하면 "Invalid data in file"라는 메시지를 출력할 것이다.
+
+분모가 0이 될 경우 "Denominator is zero, cannot compute the model."라는 메시지를 출력하고 모델 계산을 건너뛰게 했다.
+
+```
+       PROCEDURE DIVISION.
+       BEGIN.
+           OPEN INPUT INPUT-FILE
+           READ INPUT-FILE
+               AT END DISPLAY "No more data."
+           END-READ
+
+           PERFORM UNTIL INPUT-FILE STATUS = 'EOF'
+               IF X-VALUE IS NUMERIC AND Y-VALUE IS NUMERIC
+                  ADD 1 TO N
+                  ADD X-VALUE TO SUM-X
+                  ADD Y-VALUE TO SUM-Y
+                  COMPUTE SUM-XX = SUM-XX + X-VALUE ** 2
+                  COMPUTE SUM-XY = SUM-XY + X-VALUE * Y-VALUE
+               ELSE
+                  DISPLAY "Invalid data in file"
+               END-IF
+
+               READ INPUT-FILE
+                   AT END DISPLAY "No more data."
+               END-READ
+           END-PERFORM
+
+           IF N * SUM-XX - SUM-X ** 2 = 0
+               DISPLAY "Denominator is zero, cannot compute the model."
+           ELSE
+               COMPUTE B = (N * SUM-XY - SUM-X * SUM-Y) / (N * SUM-XX - SUM-X ** 2)
+               COMPUTE A = (SUM-Y - B * SUM-X) / N
+               DISPLAY "The linear regression model is Y = " A " + " B " * X."
+           END-IF
+
+           CLOSE INPUT-FILE
+           STOP RUN.
+
+```
+
+이 예제들을 통해 cobol을 공부해봤는데 조금 투박하면서도 신기한 언어였다.
