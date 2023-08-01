@@ -1,0 +1,251 @@
+---
+title: ruby를 이용한 네트워크 패킷 분석 및 머신러닝 맛보기
+description: "ruby로 네트워크 패킷 툴 만들기"
+date: August 1 2023
+---
+### RUBY란
+
+Ruby는 프로그래밍 언어로 파이썬과 함께 간결하고 쉬운 언어로 꼽힌다.
+주로 웹 프로그래밍 등 다양한 분야에서 사용되고 있다.
+
+### Ruby로 이번에 만들 프로그램
+다양한 자료가 많으나 Ruby로 네트워크 패킷을 분석하는 자료가 찾기 어려워서 이번에 만들게 됐다.
+Ruby에서 네트워크 패킷을 분석하기 위해서는 외부 라이브러리인 PacketFu를 사용하면 된다. 
+이 라이브러리는 다양한 네트워킹 작업을 Ruby로 수행할 수 있게 해준다.
+
+
+#### 네트워크 패킷을 캡처하고 정보를 출력하는 기본 예제
+```
+require 'packetfu'
+
+def packet_info(packet)
+  puts "Packet length: #{packet.size}"
+  puts "From: #{packet.ip_saddr} to: #{packet.ip_daddr}"
+  puts "Protocol: #{packet.proto.last}"
+end
+
+# Capture 10 packets on interface eth0.
+capture = PacketFu::Capture.new(iface: 'eth0', start: true, max_packets: 10)
+
+capture.stream.each do |packet|
+  pkt = PacketFu::Packet.parse(packet)
+  packet_info(pkt)
+end
+
+```
+
+위 코드는 패킷의 길이, 출발지 IP, 목적지 IP, 프로토콜 정보를 출력한다. 
+'eth0'는 네트워크 인터페이스를 가리키는데 환경에 따라 다르므로 실제 환경에 맞게 변경해야 할 것이다.
+
+이 코드를 실행하려면 루트 권한이 필요하다. 
+PacketFu가 로우 레벨 네트워크 인터페이스에 접근하기 때문이다. 
+본디 패킷 캡처는 루트 권한을 필요로 하는 작업이기도 하다.
+
+
+#### 가져온 패킷 정보 디스플레이 방법
+
+Ruby에는 터미널에서 색상을 처리하는 라이브러리로 'colorize'가 있다. 
+이걸로 패킷의 종류와 사이즈에 따라 다른 색상을 출력하도록 하겠다.
+
+간단하게 IP, TCP, UDP 프로토콜을 구분하고 패킷 사이즈에 따라 다른 색상을 사용해 보겠다.
+
+```
+require 'packetfu'
+require 'colorize'
+
+def packet_info(packet)
+  size = packet.size
+
+  info = "Packet length: #{size}, From: #{packet.ip_saddr} to: #{packet.ip_daddr}, Protocol: #{packet.proto.last}"
+
+  case packet.proto.last
+  when 'TCP'
+    color = :red
+  when 'UDP'
+    color = :green
+  else
+    color = :blue
+  end
+
+  puts info.colorize(color)
+end
+
+# Capture 10 packets on interface eth0.
+capture = PacketFu::Capture.new(iface: 'eth0', start: true, max_packets: 10)
+
+capture.stream.each do |packet|
+  pkt = PacketFu::Packet.parse(packet)
+  packet_info(pkt)
+end
+
+```
+
+
+이 코드는 TCP 패킷은 빨간색으로 UDP 패킷은 녹색으로 그 외의 패킷은 파란색으로 출력한다. 
+패킷의 크기에 따라서도 다른 색상을 사용할 수 있는데 이건 이번에 해보자
+
+#### 크기에 따라 다른 색상 적용
+
+그레이스케일을 이용해서 하려고 한다.
+
+패킷의 크기에 따라 색상을 그레이스케일로 표현하려면 패킷의 크기를 0~255의 범위로 정규화하여 해당 값을 그레이스케일 값으로 사용하면 된다. 
+그래도 색상의 그레이스케일 변환은 터미널에 따라 다르게 보일 수 있다. 
+터미널이 256색상을 모두 지원하지 않는 경우에는 정확하게 표현되지 않을 수도 있다.
+
+```
+require 'packetfu'
+require 'colorize'
+
+def packet_info(packet)
+  size = packet.size
+
+  info = "Packet length: #{size}, From: #{packet.ip_saddr} to: #{packet.ip_daddr}, Protocol: #{packet.proto.last}"
+
+  case packet.proto.last
+  when 'TCP'
+    color = :red
+  when 'UDP'
+    color = :green
+  else
+    color = :blue
+  end
+
+  # Normalize packet size to 0~255 for grayscale
+  gray_scale_value = (size / 65536.0 * 255).round
+
+  puts info.colorize(color).colorize(background: gray_scale_value)
+end
+
+# Capture 10 packets on interface eth0.
+capture = PacketFu::Capture.new(iface: 'eth0', start: true, max_packets: 10)
+
+capture.stream.each do |packet|
+  pkt = PacketFu::Packet.parse(packet)
+  packet_info(pkt)
+end
+```
+
+#### 엑셀 형식으로 저장하기
+
+얻게 된 파일을 이제 엑셀, CSV형식으로 저장하려고 한다.
+
+Ruby에서는 CSV 라이브러리를 사용하여 엑셀에서 열 수 있는 CSV 파일을 생성할 수 있다. 
+CSV 형식으로 패킷 정보를 저장하면 엑셀에서 쉽게 데이터를 분석하고 그래프를 그릴 수 있다.
+
+```
+require 'packetfu'
+require 'csv'
+
+# PacketFu capture settings
+config = PacketFu::Utils.whoami?
+iface = config[:iface]
+capture = PacketFu::Capture.new(iface: iface, start: true, max_packets: 10)
+
+CSV.open("packet_info.csv", "wb") do |csv|
+  # Write header
+  csv << ["Packet Length", "Source", "Destination", "Protocol"]
+
+  capture.stream.each do |packet|
+    pkt = PacketFu::Packet.parse(packet)
+
+    # Get packet information
+    length = pkt.size
+    src = pkt.ip_saddr
+    dest = pkt.ip_daddr
+    proto = pkt.proto.last
+
+    # Write packet information to CSV
+    csv << [length, src, dest, proto]
+  end
+end
+
+```
+이 코드를 실행하면 "packet_info.csv"라는 이름의 CSV 파일이 생성되고
+각 패킷의 길이, 출발지 IP, 목적지 IP, 프로토콜 정보가 해당 파일에 저장된다. 
+이 CSV 파일을 엑셀에서 열어 패킷 데이터를 분석할 수 있다.
+
+#### 분석 정보 시각화 
+Ruby에서 데이터 시각화를 수행하기 위해 여러 가지 라이브러리가 있다. 
+그 중에서도 'rubyplot'는 간단한 차트 및 그래프를 생성하는데 유용하다.
+
+패킷의 프로토콜 별 카운트를 기반으로 바 차트를 만들어보자.
+
+Gemfile에 다음 gem을 추가하여 설치하자
+
+```
+gem 'rubyplot'
+
+```
+그런 다음 bundle install을 실행하여 gem을 설치한다.
+
+다음은 패킷 정보 CSV 파일을 읽어 들이고 프로토콜 별 패킷 수를 카운트한 후 바 차트를 생성하면 된다.
+
+```
+require 'csv'
+require 'rubyplot'
+
+# 패킷 정보 읽기
+packet_info = CSV.read("packet_info.csv", headers: true)
+
+# 프로토콜에 따라 분류
+protocol_counts = packet_info["Protocol"].tally
+
+# 바 차트 위한 전처리
+labels = protocol_counts.keys
+counts = protocol_counts.values
+
+# 바 차트 만들기
+figure = Rubyplot::Figure.new
+figure.bar! counts, bar_colors: ['blue'], labels: labels
+figure.write('packet_info.png')
+
+```
+
+#### 선형회귀 적용
+
+마지막으로 선형회귀를 적용해서 간단하게 머신러닝을 하겠다.
+
+머신러닝 라이브러리는 Ruby에 비해 Python에서 더 활성화되어 있다. 
+그러나 Ruby에서도 머신러닝 모델을 학습시킬 수 있는 몇 가지 라이브러리가 있다. 
+rumale'라는 라이브러리를 사용하여 선형 회귀 모델을 학습시키자.
+
+Gemfile에 다음 gem을 추가하여 설치
+
+```
+gem 'rumale'
+
+```
+그런 다음 bundle install을 실행하여 gem을 설치한다
+
+##### 패킷 크기를 예측하는 간단한 선형 회귀 모델을 학습
+
+```
+require 'csv'
+require 'rumale'
+
+# CSV에서 패킷 정보 읽어오기
+packet_info = CSV.read("packet_info.csv", headers: true)
+
+# 머신러닝을 위한 데이터 준비
+protocols = packet_info["Protocol"].map { |protocol| protocol.hash }
+sizes = packet_info["Size"].map(&:to_i)
+
+x_train = Rumale::Numo::DFloat.asarray(protocols).expand_dims(1)
+y_train = Rumale::Numo::DFloat.asarray(sizes)
+
+# 선형 회귀 모델 학습
+model = Rumale::LinearModel::LinearRegression.new
+model.fit(x_train, y_train)
+
+# 이제 모델을 사용하여 패킷 크기를 예측할 수 있습니다.
+# 예를 들어, TCP 패킷의 크기를 예측하려면:
+tcp_hash = "TCP".hash
+predicted_size = model.predict(Rumale::Numo::DFloat.asarray([tcp_hash]).expand_dims(1))
+
+puts "TCP 패킷의 예상 크기: #{predicted_size[0]}"
+
+```
+이 코드는 프로토콜 이름을 해시로 변환하여 숫자 데이터를 생성하고 이 데이터와 패킷 크기를 사용하여 선형 회귀 모델을 학습시킨다.
+
+이 예제에서는 단순화를 위해 프로토콜 이름을 직접 해시로 변환했는데 실제로는 카테고리 데이터를 처리하는 방법이 또 있다.
+one-hot 인코딩같은 것이다.
