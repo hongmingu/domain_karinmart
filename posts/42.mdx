@@ -153,7 +153,7 @@ end
 ```
 
 이 코드에서 params[:post]는 요청 본문에서 post 객체를 읽는다.
-이 객체는 예를 들어 { title: Hello, content: World }와 같은 JSON 형식이어야 한다.
+이 객체는 title은 Hello, content는 World 와 같은 JSON 형식이어야 한다. 이 형식을 지켜야 올바르게 작동한다.
 
 redirect_to /posts/#{post.id}는 생성된 post의 페이지로 리다이렉션한다.
 
