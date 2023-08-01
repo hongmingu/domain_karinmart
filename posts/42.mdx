@@ -3,6 +3,7 @@ title: ruby hanami 웹프레임워크 써보기
 description: "ruby 하나미 사용법"
 date: August 1 2023
 ---
+
 ### Ruby Hanami 사용법
 
 Hanami는 MVC 패턴을 따르는 Ruby 웹 프레임워크이다. 
@@ -96,7 +97,11 @@ module Web::Controllers::Posts
   end
 end
 ```
-위의 예제에서 Web::Controllers::Posts::Index 클래스는 HTTP 요청을 처리하고 모든 Post를 반환한다.
+위의 예제에서 
+```
+Web::Controllers::Posts::Index
+````
+클래스는 HTTP 요청을 처리하고 모든 Post를 반환한다.
 
 위의 단계를 모든 CRUD 작업에 대해 반복하자. 각 액션을 적절하게 수정하여 각각의 CRUD 작업을 처리할 수 있도록 할 수 있다.
 
@@ -126,7 +131,11 @@ module Web::Controllers::Posts
 end
 ```
 
-이 코드에서는 params[:id]를 통해 URL의 id 파라미터를 읽는다.
+이 코드에서는 
+```
+params[:id]
+```
+를 통해 URL의 id 파라미터를 읽는다.
 
 #### POST 요청에서 파라미터 받기
 
@@ -155,7 +164,10 @@ end
 이 코드에서 params[:post]는 요청 본문에서 post 객체를 읽는다.
 이 객체는 title은 Hello, content는 World 와 같은 JSON 형식이어야 한다. 이 형식을 지켜야 올바르게 작동한다.
 
-redirect_to /posts/#{post.id}는 생성된 post의 페이지로 리다이렉션한다.
+```
+redirect_to /posts/#{post.id}
+```
+는 생성된 post의 페이지로 리다이렉션한다.
 
 이제 POST 요청을 사용하여 새로운 post를 생성하고 생성된 post의 페이지로 리다이렉션하게 된다.
 
