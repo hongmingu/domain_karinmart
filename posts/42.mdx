@@ -79,7 +79,7 @@ hanami generate action web posts#delete
 ```
 
 이걸 액션이라고 하는데 액션에 대해 컨트롤러 파일들을 수정하여 각 CRUD 작업을 처리하도록 하자. 
-예를 들어 index 액션은 모든 Post를 가져오고 show 액션은 특정 Post를 가져오는 등의 작업을 처리해야 하자.
+예를 들어 index 액션은 모든 Post를 가져오고 show 액션은 특정 Post를 가져오는 등의 작업을 처리해야 한다.
 
 apps/web/controllers/posts/index.rb 파일을 열어 아래와 같이 수정하자
 
@@ -126,7 +126,7 @@ module Web::Controllers::Posts
 end
 ```
 
-이 코드에서 params[:id]를 통해 URL의 id 파라미터를 읽는다.
+이 코드에서는 params[:id]를 통해 URL의 id 파라미터를 읽는다.
 
 #### POST 요청에서 파라미터 받기
 
@@ -152,10 +152,10 @@ module Web::Controllers::Posts
 end
 ```
 
-이 코드에서 params[:post]는 요청 본문에서 post 객체를 읽다.
-이 객체는 예를 들어 { "title": "Hello", "content": "World" }와 같은 JSON 형식이어야 한다.
+이 코드에서 params[:post]는 요청 본문에서 post 객체를 읽는다.
+이 객체는 예를 들어 { title: Hello, content: World }와 같은 JSON 형식이어야 한다.
 
-redirect_to "/posts/#{post.id}"는 생성된 post의 페이지로 리다이렉션한다.
+redirect_to /posts/#{post.id}는 생성된 post의 페이지로 리다이렉션한다.
 
-이제 POST 요청을 사용하여 새로운 post를 생성하고 생성된 post의 페이지로 리다이렉션하는 기능이 구현하자.
+이제 POST 요청을 사용하여 새로운 post를 생성하고 생성된 post의 페이지로 리다이렉션하게 된다.
 
