@@ -1,0 +1,98 @@
+---
+title: ruby roda 튜토리얼3 미들웨어와 플러그인
+description: "ruby roda의 미들웨어와 플러그인에 대해 알아봅시다"
+date: August 2 2023
+---
+## 미들웨어와 플러그인
+### 미들웨어 사용법
+미들웨어는 요청과 응답 사이의 처리 과정에 추가 로직을 적용할 수 있다. Rack 미들웨어를 사용해보자
+```
+require 'roda'
+
+class App < Roda
+  use Rack::Session::Cookie, secret: 'secret_key'
+
+  route do |r|
+    r.on 'counter' do
+      count = r.session['counter'] || 0
+      count += 1
+      r.session['counter'] = count
+
+      "Counter: #{count}"
+    end
+  end
+end
+```
+### 플러그인 설치 및 사용하기
+Roda는 다양한 플러그인을 지원하며 기능을 확장하기 편하다.
+```
+require 'roda'
+
+class App < Roda
+  plugin :all_verbs
+
+  route do |r|
+    r.patch 'example' do
+      'PATCH request handled'
+    end
+  end
+end
+```
+## 템플릿 및 뷰
+### ERB나 Haml과 같은 템플릿 엔진 사용하기
+Roda는 ERB와 같은 템플릿 엔진을 사용하여 뷰를 렌더링할 수 있다.
+
+먼저 ERB 템플릿을 사용하기 위해 erubi gem을 설치하자
+```
+gem install erubi
+```
+다음은 ERB를 사용하는 예시이다
+```
+require 'roda'
+require 'erubi'
+
+class App < Roda
+  plugin :render, engine: 'erb'
+
+  route do |r|
+    r.get 'hello' do
+      @greeting = 'Hello, Roda!'
+      view('hello')
+    end
+  end
+end
+```
+
+템플릿 파일-> views/hello.erb
+```
+erb
+Copy code
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Greeting</title>
+</head>
+<body>
+  <%= @greeting %>
+</body>
+</html>
+```
+### 뷰 렌더링
+뷰 렌더링은 애플리케이션의 로직과 사용자에게 보여지는 부분을 분리하는 중요한 개념이다.
+```
+class App < Roda
+  plugin :render
+
+  route do |r|
+    r.get 'user/:id' do |id|
+      @user = User.find(id)
+      view('user_detail')
+    end
+  end
+end
+```
+여기서 user_detail.erb 템플릿 파일은 사용자의 상세 정보를 보여주며 인스턴스 변수 @user를 사용한다.
+
+Roda의 이러한 기능은 웹 애플리케이션의 유지보수와 확장을 쉽게 해준다. 
+미들웨어와 플러그인은 애플리케이션의 중심 로직에 쉽게 섞을 수 있고
+템플릿과 뷰는 사용자 인터페이스의 유연한 구성을 가능하게 한다.

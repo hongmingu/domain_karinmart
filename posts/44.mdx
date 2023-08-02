@@ -1,0 +1,109 @@
+---
+title: ruby roda 튜토리얼2 기본 라우팅과 파라미터 다루기
+description: "ruby roda에서 기본 라우팅 하는 방법과 파라미터를 다루는 방법에 대해 소개합니다"
+date: August 2 2023
+---
+## 기본 라우팅
+### 라우팅 트리 이해하기
+Roda의 라우팅은 트리 구조를 사용한다. 기본적인 라우트를 정의하면 이에 기반해서 하위 라우트를 계속 확장할 수 있다.
+```
+require 'roda'
+
+class App < Roda
+  route do |r|
+    r.on 'products' do
+      r.is 'list' do
+        'Product List'
+      end
+
+      r.is 'detail' do
+        'Product Detail'
+      end
+    end
+  end
+end
+```
+### GET, POST 요청 처리하기
+Roda에서 GET과 POST 요청을 처리하는 방법은 매우 간단하다.
+```
+class App < Roda
+  route do |r|
+    r.get 'hello' do
+      'Hello, GET!'
+    end
+
+    r.post 'hello' do
+      'Hello, POST!'
+    end
+  end
+end
+```
+### 다양한 HTTP 메소드와 라우팅
+Roda에서는 다양한 HTTP 메소드를 지원하는데 아래와 같이 다른 메소드들도 처리할 수 있다.
+```
+class App < Roda
+  route do |r|
+    r.get 'item' do
+      'Get Item'
+    end
+
+    r.post 'item' do
+      'Create Item'
+    end
+
+    r.put 'item' do
+      'Update Item'
+    end
+
+    r.delete 'item' do
+      'Delete Item'
+    end
+  end
+end
+```
+## 파라미터 다루기
+### URL 파라미터 사용하기
+URL 파라미터를 사용하여 동적 라우트를 생성할 수도 있다.
+```
+class App < Roda
+  route do |r|
+    r.get 'user/:id' do |id|
+      "User ID: #{id}"
+    end
+  end
+end
+```
+### POST 데이터 받기
+POST 요청에서 폼 데이터를 받아 처리하는 예제이다.
+
+```
+class App < Roda
+  route do |r|
+    r.post 'login' do
+      username = r.params['username']
+      password = r.params['password']
+      "Username: #{username}, Password: #{password}"
+    end
+  end
+end
+```
+### JSON 요청 처리하기
+JSON 요청을 받아 처리하는 예제이다.
+```
+require 'json'
+
+class App < Roda
+  plugin :json_parser
+
+  route do |r|
+    r.post 'api' do
+      data = r.json
+      name = data['name']
+      "Received JSON with name: #{name}"
+    end
+  end
+end
+```
+이 코드는 json_parser 플러그인을 사용하여 JSON 요청 본문을 파싱하고 name 필드를 추출한다.
+
+라우팅 트리와 파라미터 처리는 애플리케이션 개발의 핵심이며 최대한 짧지만 핵심을 전달할 수 있도록 예제들을 작성해보았다.
