@@ -1,0 +1,437 @@
+---
+title: opencv-python 소개 및 사용법
+description: 'opencv-python 에 대해 알아보자'
+date: August 4 2023
+---
+OpenCV - Open Source Computer Vision Library는 
+오픈소스 컴퓨터 비전, 기계 학습 소프트웨어 라이브러리이다. 
+이미지 처리, 비디오 분석, 객체 인식, 얼굴 인식, 3D 모델 재구성, 스테레오 이미지 매칭 같은 경우에 사용된다. 
+OpenCV는 C++, Python, Java와 같은 여러 언어에서 사용할 수 있고 Windows, Linux, OS X 및 Android와 같은 운영 체제에서 실행된다.
+
+OpenCV-Python은 OpenCV의 Python 바인딩으로
+ Python 프로그래밍 언어를 사용하여 OpenCV 라이브러리를 쉽게 활용할 수 있도록 해준다. 
+ OpenCV-Python을 사용하면 Python의 문법을 이용하여 복잡한 이미지 처리, 컴퓨터 작업을 빠르고 쉽게 해준다.
+
+## OpenCV-Python의 주요 기능
+### 이미지 처리
+이미지 읽기, 쓰기, 변환, 필터링, 블러, 경계 검출, 그레이스케일 변환 같은 기본 이미지 처리 작업을 한다.
+
+#### 이미지 읽기
+OpenCV에서는 cv2.imread() 함수를 사용하여 이미지를 읽을 수 있다.
+
+```
+import cv2
+
+image = cv2.imread('example.jpg')
+cv2.imshow('Image', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
+#### 이미지 쓰기
+cv2.imwrite() 함수를 사용하여 이미지를 저장해준다.
+```
+cv2.imwrite('output.jpg', image)
+```
+#### 이미지 변환(그레이스케일)
+컬러 이미지를 그레이스케일로 변환하려면 cv2.cvtColor() 함수를 사용한다.
+```
+gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+```
+#### 필터링 혹은 블러링
+이미지에 블러링 효과를 주려면 cv2.GaussianBlur() 함수를 사용해준다.
+```
+blurred_image = cv2.GaussianBlur(image, (15, 15), 0)
+```
+#### 경계 검출
+Canny 에지 검출기를 사용해보자.
+```
+edges = cv2.Canny(image, 100, 200)
+```
+#### 적용 예
+위의 기능들을 모두 한 프로그램에서 적용해볼 수 있다.
+```
+import cv2
+
+# 이미지 읽기
+image = cv2.imread('example.jpg')
+
+# 그레이스케일 변환
+gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+# 블러링
+blurred_image = cv2.GaussianBlur(gray_image, (15, 15), 0)
+
+# 경계 검출
+edges = cv2.Canny(blurred_image, 100, 200)
+
+# 결과 표시
+cv2.imshow('Original', image)
+cv2.imshow('Gray', gray_image)
+cv2.imshow('Blurred', blurred_image)
+cv2.imshow('Edges', edges)
+
+# 저장
+cv2.imwrite('edges.jpg', edges)
+
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
+
+### 비디오 분석
+카메라 또는 비디오 파일로부터 프레임을 캡처하고 분석할 수 있고 동적 객체 추적, 배경 제거 같은 작업을 한다.
+#### 비디오 캡처
+카메라나 비디오 파일로부터 프레임을 캡처하려면 cv2.VideoCapture를 사용한다.
+```
+import cv2
+
+# 카메라에서 비디오 캡처
+capture = cv2.VideoCapture(0)
+
+# 비디오 파일에서 비디오 캡처
+# capture = cv2.VideoCapture('example.mp4')
+```
+#### 프레임 읽기
+capture.read() 메서드를 사용하여 프레임을 읽다.
+```
+ret, frame = capture.read()
+```
+#### 동적 객체 추적
+동적 객체를 추적하기 위해 OpenCV에서 제공하는 추적기를 사용해준다.
+```
+# 추적기 생성
+tracker = cv2.TrackerKCF_create()
+
+# 추적할 객체 선택
+bbox = cv2.selectROI(frame, False)
+ok = tracker.init(frame, bbox)
+
+# 추적
+while True:
+    ok, bbox = tracker.update(frame)
+    if ok:
+        # 추적 성공
+        p1 = (int(bbox[0]), int(bbox[1]))
+        p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+        cv2.rectangle(frame, p1, p2, (255, 0, 0), 2, 1)
+```
+#### 배경 제거
+배경 제거를 위해 BackgroundSubtractor를 사용해준다.
+```
+# 배경 제거 객체 생성
+fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
+
+while True:
+    ret, frame = capture.read()
+    fgmask = fgbg.apply(frame)
+    cv2.imshow('Foreground', fgmask)
+```
+#### 완전한 예제
+비디오 캡처, 프레임 읽기, 동적 객체 추적을 조합한 완전한 예제이다.
+```
+import cv2
+
+# 비디오 캡처
+capture = cv2.VideoCapture(0)
+
+# 추적기 생성
+tracker = cv2.TrackerKCF_create()
+
+# 첫 프레임 읽기
+ret, frame = capture.read()
+bbox = cv2.selectROI(frame, False)
+ok = tracker.init(frame, bbox)
+
+while True:
+    ret, frame = capture.read()
+    if not ret:
+        break
+
+    # 추적
+    ok, bbox = tracker.update(frame)
+    if ok:
+        p1 = (int(bbox[0]), int(bbox[1]))
+        p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+        cv2.rectangle(frame, p1, p2, (255, 0, 0), 2, 1)
+    else:
+        cv2.putText(frame, "Tracking failure detected", (100, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2)
+
+    cv2.imshow('Tracking', frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+capture.release()
+cv2.destroyAllWindows()
+```
+
+
+### 객체 인식
+특징 추출, 매칭, 객체 분류 등을 통해 이미지 내의 특정 객체를 인식하고 분석한다.
+
+#### 특징 추출
+이미지에서 특징을 추출하려면 SIFT, SURF와 같은 특징 검출기를 사용한다. 이 예에서는 SIFT를 사용한다.
+```
+import cv2
+
+image = cv2.imread('object.jpg', 0)
+
+# SIFT 검출기 생성
+sift = cv2.SIFT_create()
+
+# 키포인트와 디스크립터 추출
+keypoints, descriptors = sift.detectAndCompute(image, None)
+```
+#### 특징 매칭
+특징 매칭은 두 이미지 사이의 특징을 연결한다. 이 예에서는 FLANN 기반 매처를 사용한다.
+```
+# FLANN 매개변수 설정
+FLANN_INDEX_KDTREE = 1
+index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+search_params = dict(checks=50)
+
+# FLANN 매처 생성
+flann = cv2.FlannBasedMatcher(index_params, search_params)
+
+# 두 이미지 사이의 매칭 
+matches = flann.knnMatch(descriptors1, descriptors2, k=2)
+```
+#### 좋은 매치 찾기
+모든 매치가 좋은 것은 아니므로 좋은 매치만 선택한다.
+```
+# 두 특징 사이의 거리가 충분히 작은 경우만 선택
+good_matches = []
+for m,n in matches:
+    if m.distance < 0.7*n.distance:
+        good_matches.append(m)
+```
+#### 객체 찾기
+좋은 매치를 사용하여 원본 이미지와 대상 이미지 사이의 동차성을 찾다.
+```
+src_pts = np.float32([ keypoints1[m.queryIdx].pt for m in good_matches ]).reshape(-1,1,2)
+dst_pts = np.float32([ keypoints2[m.trainIdx].pt for m in good_matches ]).reshape(-1,1,2)
+
+# RANSAC을 사용한 변환 행렬 찾기
+M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+```
+#### 결과 그리기
+원본 이미지에서 찾은 객체를 대상 이미지에 그립니다.
+```
+# 변환 행렬을 사용하여 원본 이미지의 경계를 대상 이미지에 매핑
+h,w = image1.shape
+pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+dst = cv2.perspectiveTransform(pts, M)
+
+# 대상 이미지에 폴리곤 그리기
+image2 = cv2.polylines(image2, [np.int32(dst)], True, 255, 3, cv2.LINE_AA)
+```
+### 기계 학습과 딥 러닝
+OpenCV-Python은 다양한 기계 학습 알고리즘을 지원하며, 딥 러닝 프레임워크와 연동할 수 있는 인터페이스를 준다.
+#### 기계 학습: k-Nearest Neighbors (k-NN)
+k-NN은 간단한 분류 알고리즘 중 하나이다. OpenCV에서는 cv2.ml.KNearest_create() 함수를 사용해 k-NN 모델을 생성하고 학습시킬 수 있다.
+```
+import cv2
+import numpy as np
+
+# 학습 데이터와 레이블 준비
+trainData = np.random.randint(0, 100, (25, 2)).astype(np.float32)
+labels = (trainData[:, 0] + trainData[:, 1] > 100).astype(np.int32)
+
+# k-NN 모델 생성
+knn = cv2.ml.KNearest_create()
+
+# k-NN 모델 학습
+knn.train(trainData, cv2.ml.ROW_SAMPLE, labels)
+
+# 예측
+testData = np.random.randint(0, 100, (5, 2)).astype(np.float32)
+ret, results, neighbours, dist = knn.findNearest(testData, k=3)
+
+print("Test Data: ", testData)
+print("Predicted labels: ", results)
+```
+#### 딥 러닝
+OpenCV와 TensorFlow 연동 예제
+OpenCV는 DNN 모듈을 통해 딥 러닝 프레임워크와의 연동을 지원한다. 
+TensorFlow, Caffe, Torch 등 다양한 프레임워크의 모델을 불러올 수 있다.
+
+TensorFlow에서 사전 학습된 모델을 불러와 이미지 분류를 해 보겠다.
+```
+import cv2
+
+# 사전 학습된 모델과 설정 파일의 경로
+model_path = 'frozen_inference_graph.pb'
+config_path = 'ssd_mobilenet_v2_coco_2018_03_29.pbtxt'
+
+# DNN 모듈을 사용하여 네트워크 불러오기
+net = cv2.dnn.readNetFromTensorflow(model_path, config_path)
+
+# 이미지 읽기
+image = cv2.imread('image.jpg')
+
+# 입력 이미지 크기 조정
+blob = cv2.dnn.blobFromImage(image, size=(300, 300), mean=(104, 117, 123))
+
+# 네트워크에 입력 설정
+net.setInput(blob)
+
+# 순전파 실행
+detections = net.forward()
+
+# 결과 처리
+# (생략)
+
+# 결과 표시
+cv2.imshow('image', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
+위 코드에서는 사전 학습된 SSD-Mobilenet 모델을 불러와 이미지에서 객체 검출을 한다.
+
+
+### 3D 비전
+스테레오 이미지에서 3D 포인트 클라우드를 추출하거나, 3D 객체를 재구성하는 같은 3D 비전 작업을 지원한다.
+3D 비전은 두 개 이상의 2D 이미지에서 3D 정보를 추출하는 과정이다. OpenCV는 이러한 3D 비전 작업을 하는 다양한 기능을 제공하며, 스테레오 이미지에서 3D 포인트 클라우드를 추출하거나, 3D 객체를 재구성하는 같은 작업을 해준다.
+
+#### 스테레오 이미지에서 3D 포인트 클라우드 추출
+스테레오 카메라에서 얻은 두 이미지를 사용해 3D 포인트 클라우드를 추출하는 기본 예제를 살펴보겠다.
+
+#### 스테레오 이미지 읽기
+두 이미지가 동일한 장면의 다른 관점에서 촬영된 것이어야 한다.
+#### 카메라 캘리브레이션
+카메라의 내부 및 외부 파라미터를 추정한다.
+#### 이미지 사전 처리
+이미지를 정렬하고, 노이즈를 제거한다.
+#### 스테레오 매칭
+두 이미지에서 일치하는 픽셀을 찾아 깊이를 계산한다.
+#### 3D 재구성
+3D 포인트 클라우드를 생성한다.
+```
+import cv2
+import numpy as np
+
+# 스테레오 이미지 읽기
+imgL = cv2.imread('left.jpg', cv2.IMREAD_GRAYSCALE)
+imgR = cv2.imread('right.jpg', cv2.IMREAD_GRAYSCALE)
+
+# 스테레오 매칭을 위한 스테레오SGBM 객체 생성
+stereo = cv2.StereoSGBM_create(
+    minDisparity=16,
+    numDisparities=64,
+    blockSize=11,
+    P1=8 * 3 * 3**2,
+    P2=32 * 3 * 3**2
+)
+
+# 불러온 이미지에 대한 깊이 맵 생성
+disparity = stereo.compute(imgL, imgR)
+
+# 카메라 캘리브레이션 매트릭스
+Q = np.array([
+    [1, 0, 0, -512],
+    [0, 1, 0, -384],
+    [0, 0, 0, 1031.75085449],
+    [0, 0, -3.85266705, 0]
+])
+
+# 3D 포인트 클라우드 생성
+points_3D = cv2.reprojectImageTo3D(disparity, Q)
+
+```
+이 예제에서는 스테레오 이미지에서 깊이 맵을 계산하고, 3D 포인트 클라우드를 생성한다. 이렇게 추출된 3D 정보는 로봇공학, 가상 현실, 증강 현실 등 다양한 분야에서 활용된다.
+
+
+### GUI 기능
+OpenCV-Python은 간단한 GUI를 생성하여 이미지나 비디오를 표시하거나 사용자 입력을 처리해준다.
+
+OpenCV-Python은 간단한 GUI 기능을 제공하여 이미지나 비디오를 표시하거나 사용자 입력을 처리해준다. 이를 통해 이미지 처리나 비디오 분석 결과를 실시간으로 확인하거나 조작해준다. 다음은 OpenCV-Python을 사용한 GUI 기능의 주요 부분과 예제이다.
+
+#### 이미지 표시하기
+cv2.imshow() 함수를 사용하면 이미지를 창에서 표시해준다. 이 함수는 이미지의 이름과 이미지 데이터를 인수로 받아 이미지를 보여준다.
+```
+import cv2
+
+image = cv2.imread('example.jpg')
+cv2.imshow('Example Image', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
+#### 트랙바 생성하기
+트랙바는 사용자가 특정 값을 선택할 수 있는 슬라이더이다. cv2.createTrackbar() 함수를 사용하여 트랙바를 생성하고, 값의 변경을 감지해준다.
+```
+def on_change(value):
+    print(f'Trackbar value: {value}')
+
+cv2.namedWindow('Trackbar Example')
+cv2.createTrackbar('Slider', 'Trackbar Example', 0, 255, on_change)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
+#### 마우스 이벤트 처리하기
+마우스 이벤트를 감지하고 처리할 수 있는 기능을 준다. cv2.setMouseCallback() 함수를 사용하면 마우스 클릭, 더블 클릭, 드래그 같은 이벤트를 처리해준다.
+```
+def on_mouse(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print(f'Mouse Left Button Clicked at ({x}, {y})')
+
+cv2.namedWindow('Mouse Example')
+cv2.setMouseCallback('Mouse Example', on_mouse)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
+#### 비디오 표시하기
+카메라 또는 비디오 파일로부터 프레임을 읽고, cv2.imshow()를 사용하여 비디오를 표시해준다.
+
+```
+video = cv2.VideoCapture('example.mp4')
+while video.isOpened():
+    ret, frame = video.read()
+    if not ret:
+        break
+    cv2.imshow('Video Example', frame)
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+video.release()
+cv2.destroyAllWindows()
+```
+
+### 효율성
+OpenCV-Python은 내부적으로 C++로 구현된 고성능 알고리즘을 활용하므로 빠르다.
+
+OpenCV-Python은 내부적으로 C++로 작성된 알고리즘을 사용하기 때문에 높은 효율성과 빠른 실행 속도를 자랑한다. 
+Python의 사용 편의성과 C++의 성능을 결합한 결과로 많은 이미지 처리 작업을 신속하게 처리해준다.
+
+아래의 예제는 OpenCV-Python을 사용하여 이미지에서 얼굴을 탐지하는 작업을 하는 간단한 코드로 이러한 작업을 빠르게 처리하는 능력을 보여준다.
+
+#### 얼굴 인식 예제
+```
+import cv2
+import time
+
+# 얼굴 인식을 위한 Haar cascade 분류기 불러오기
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+
+# 이미지 불러오기
+image = cv2.imread('example.jpg')
+
+# 이미지를 그레이스케일로 변환
+gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+# 얼굴 인식 시작 시간 기록
+start_time = time.time()
+
+# 얼굴 인식
+faces = face_cascade.detectMultiScale(gray_image, 1.3, 5)
+
+# 인식된 얼굴에 사각형 그리기
+for (x, y, w, h) in faces:
+    cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+# 작업 시간 출력
+print(f'Face detection completed in {time.time() - start_time} seconds')
+
+# 결과 이미지 표시
+cv2.imshow('Face Detection', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+```
