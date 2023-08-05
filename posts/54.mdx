@@ -1,0 +1,523 @@
+---
+title: swift와 objective-c++에서 opencv 사용하기
+description: 'swift와 objective-c++ opencv를 사용하는 방법에 대해 여러가지 예제를 바탕으로 알아보자.'
+date: August 5 2023
+---
+
+### 1. OpenCV 설치
+####직접 설치
+OpenCV의 공식 웹사이트에서 iOS용 라이브러리를 다운로드하고 압축을 푼다.
+#### Homebrew를 통한 설치
+Homebrew는 macOS 용 패키지 관리자로 OpenCV를 설치할 수 있다.
+### 2. Xcode 프로젝트 설정
+#### 프레임워크 추가
+#### Framework 파일의 위치
+OpenCV의 .framework 파일은 일반적으로 설치된 OpenCV 디렉토리의 build 폴더 안에 있다.
+#### 수동 연결
+OpenCV framework를 직접 드래그 앤 드롭으로 프로젝트에 추가할 수도 있다.
+#### 헤더 파일 경로 설정
+#### 헤더 파일 경로
+이 경로는 OpenCV 헤더 파일이 있는 디렉토리를 가리켜야 한다.
+### 3. Objective-C 브리지 만들기
+#### Objective-C++ 파일 생성
+Objective-C++와 Objective-C의 차이점: Objective-C++ 파일(.mm)은 C++ 코드를 포함할 수 있으므로 OpenCV와 같은 C++ 라이브러리를 사용할 때 필요한다.
+#### 브리지 헤더 생성
+#### 브리지 헤더 파일
+이 헤더 파일은 Swift와 Objective-C 사이의 인터페이스 역할을 하며 Swift 코드에서 Objective-C 코드를 호출할 수 있게 해준다.
+### 4. Swift에서 OpenCV 사용
+#### 인터페이스 설계
+OpenCV 기능에 대한 Objective-C 인터페이스를 설계하면 Swift에서 이 인터페이스를 통해 OpenCV 기능을 손쉽게 사용할 수 있다.
+
+```
+#import "OpenCVInterface.h"
+#import <opencv2/opencv.hpp>
+
+@implementation OpenCVInterface
+
+- (void)doSomethingWithOpenCV {
+    cv::Mat mat; // OpenCV의 Mat 클래스 사용
+    // 여기에 OpenCV 코드 작성
+}
+
+@end
+```
+
+#### 확인할 점
+##### 버전 호환성
+사용하고 있는 OpenCV 버전, Xcode 버전. macOS 버전이 서로 호환되는지 확인해야 한다.
+##### 에러 대응
+복잡한 설정 과정 중 오류가 발생할 수 있으므로 에러 메시지를 주의깊게 읽고 필요한 경우 공식 문서나 커뮤니티를 참고해야 한다.
+
+Swift와 OpenCV를 연동하려면 여러 단계를 거쳐야 하며 각 단계는 주의를 요구한다. 하지만 이러한 설정이 완료되면 OpenCV의 강력한 이미지 및 비디오 처리 기능을 Swift 프로젝트에서 자유롭게 활용할 수 있다.
+
+
+## 그레이스케일 만드는 예제
+
+이 예제는 OpenCV의 cvtColor 함수를 사용하여 이미지를 그레이스케일로 변환한다.
+Objective-C++를 통해 OpenCV 코드와 Swift 코드를 연결한다.
+UIImageToMat와 MatToUIImage는 OpenCV와 UIKit 사이에서 이미지 형식을 변환하는 데 사용되는 유틸리티 함수라고 가정한다.
+
+
+### Objective-C++ 인터페이스 생성
+Swift에서 호출할 수 있는 Objective-C++ 인터페이스를 만들어야 한다.
+
+```
+OpenCVInterface.h
+
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface OpenCVInterface : NSObject
+
++ (UIImage *)convertToGrayscale:(UIImage *)image;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+### Objective-C++ 구현
+Objective-C++ 구현 파일에서는 OpenCV의 기능을 실제로 호출한다.
+
+```
+OpenCVInterface.mm
+
+#import "OpenCVInterface.h"
+#import <opencv2/opencv.hpp>
+
+@implementation OpenCVInterface
+
++ (UIImage *)convertToGrayscale:(UIImage *)image {
+    cv::Mat inputMat;
+    UIImageToMat(image, inputMat); // UIImage를 cv::Mat로 변환
+
+    cv::Mat grayscaleMat;
+    cv::cvtColor(inputMat, grayscaleMat, cv::COLOR_BGR2GRAY); // 그레이스케일 변환
+
+    UIImage *resultImage = MatToUIImage(grayscaleMat); // cv::Mat를 UIImage로 변환
+    return resultImage;
+}
+
+@end
+```
+### Swift에서의 사용
+이제 Swift 코드에서 위에서 만든 OpenCVInterface를 호출하여 이미지를 그레이스케일로 변환할 수 있다.
+```
+ViewController.swift
+
+import UIKit
+
+class ViewController: UIViewController {
+
+    @IBOutlet weak var imageView: UIImageView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        if let image = UIImage(named: "sample.jpg") {
+            imageView.image = OpenCVInterface.convertToGrayscale(image)
+        }
+    }
+}
+```
+## 이미지에서 얼굴 감지하는 예제
+
+이 예제는 OpenCV의 CascadeClassifier를 사용하여 이미지에서 얼굴을 감지한다.
+haarcascade_frontalface_default.xml은 미리 학습된 얼굴 감지 캐스케이드 파일로 OpenCV와 함께 제공되는 파일이다.
+감지된 얼굴 주변에 녹색 사각형을 그려서 결과 이미지에 표시한다.
+
+### Objective-C++ 인터페이스 생성
+먼저 Swift에서 호출할 수 있는 새로운 메서드를 인터페이스에 추가한다.
+```
+OpenCVInterface.h
+
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface OpenCVInterface : NSObject
+
++ (UIImage *)detectFacesInImage:(UIImage *)image;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+### Objective-C++ 구현
+이번에는 얼굴을 감지하는 메서드를 구현한다.
+```
+OpenCVInterface.mm
+
+#import "OpenCVInterface.h"
+#import <opencv2/opencv.hpp>
+
+@implementation OpenCVInterface
+
++ (UIImage *)detectFacesInImage:(UIImage *)image {
+    cv::Mat inputMat;
+    UIImageToMat(image, inputMat); // UIImage를 cv::Mat로 변환
+
+    // 얼굴 감지를 위한 캐스케이드 분류기 생성
+    cv::CascadeClassifier faceCascade;
+    faceCascade.load("path/to/haarcascade_frontalface_default.xml"); // 캐스케이드 파일 경로
+
+    std::vector<cv::Rect> faces;
+    faceCascade.detectMultiScale(inputMat, faces); // 얼굴 감지
+
+    // 감지된 얼굴에 사각형 그리기
+    for (const auto &face : faces) {
+        cv::rectangle(inputMat, face, cv::Scalar(0, 255, 0), 2);
+    }
+
+    UIImage *resultImage = MatToUIImage(inputMat); // cv::Mat를 UIImage로 변환
+    return resultImage;
+}
+
+@end
+```
+### Swift에서의 사용
+이제 Swift 코드에서 detectFacesInImage 메서드를 호출하여 이미지에서 얼굴을 감지하고 화면에 표시할 수 있다.
+```
+ViewController.swift
+
+import UIKit
+
+class ViewController: UIViewController {
+
+    @IBOutlet weak var imageView: UIImageView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        if let image = UIImage(named: "sample.jpg") {
+            imageView.image = OpenCVInterface.detectFacesInImage(image)
+        }
+    }
+}
+```
+## 이미지에서 특징점(피처포인트) 추출하기
+
+이 예제는 OpenCV의 SIFT 알고리즘을 사용하여 이미지에서 특징점을 추출한다.
+cv::drawKeypoints 함수는 추출된 특징점을 이미지에 그린다.
+특징점 추출은 객체 매칭, 이미지 스티칭, 객체 추적 등의 작업에서 사용된다.
+
+### Objective-C++ 인터페이스 생성
+새로운 메서드를 인터페이스에 추가한다.
+```
+OpenCVInterface.h
+
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface OpenCVInterface : NSObject
+
++ (UIImage *)extractFeaturesInImage:(UIImage *)image;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+### Objective-C++ 구현
+이번에는 특징점을 추출하는 메서드를 구현한다.
+```
+OpenCVInterface.mm
+
+#import "OpenCVInterface.h"
+#import <opencv2/opencv.hpp>
+
+@implementation OpenCVInterface
+
++ (UIImage *)extractFeaturesInImage:(UIImage *)image {
+    cv::Mat inputMat;
+    UIImageToMat(image, inputMat); // UIImage를 cv::Mat로 변환
+
+    // 특징점 추출을 위한 SIFT 탐지기 생성
+    cv::Ptr<cv::SIFT> siftDetector = cv::SIFT::create();
+
+    // 특징점 추출
+    std::vector<cv::KeyPoint> keypoints;
+    siftDetector->detect(inputMat, keypoints);
+
+    // 특징점 그리기
+    cv::Mat outputMat;
+    cv::drawKeypoints(inputMat, keypoints, outputMat, cv::Scalar::all(-1));
+
+    UIImage *resultImage = MatToUIImage(outputMat); // cv::Mat를 UIImage로 변환
+    return resultImage;
+}
+
+@end
+```
+### Swift에서의 사용
+Swift 코드에서 extractFeaturesInImage 메서드를 호출하여 이미지에서 특징점을 추출하고 화면에 표시한다.
+```
+ViewController.swift
+
+import UIKit
+
+class ViewController: UIViewController {
+
+    @IBOutlet weak var imageView: UIImageView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        if let image = UIImage(named: "sample.jpg") {
+            imageView.image = OpenCVInterface.extractFeaturesInImage(image)
+        }
+    }
+}
+```
+## 특정 색상 검출해보기
+
+이 예제는 이미지를 HSV 색상 공간으로 변환하여 특정 색상 범위를 검출한다.
+cv::inRange 함수를 사용하여 주어진 범위 내의 색상을 검출하고, 결과를 마스크로 사용하여 원본 이미지에서 해당 색상 부분만 추출한다.
+색상 검출은 이미지 분석, 객체 추적, 이미지 세그멘테이션 등의 응용 분야에서 널리 사용된다.
+
+### Objective-C++ 인터페이스 생성
+색상 검출 메서드를 추가하기 위한 인터페이스이다.
+```
+OpenCVInterface.h
+
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface OpenCVInterface : NSObject
+
++ (UIImage *)detectColorInImage:(UIImage *)image withHue:(double)hue;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+### Objective-C++ 구현
+특정 색상을 검출하는 메서드를 구현한다.
+```
+OpenCVInterface.mm
+
+#import "OpenCVInterface.h"
+#import <opencv2/opencv.hpp>
+
+@implementation OpenCVInterface
+
++ (UIImage *)detectColorInImage:(UIImage *)image withHue:(double)hue {
+    cv::Mat inputMat;
+    UIImageToMat(image, inputMat);
+
+    // HSV로 변환
+    cv::Mat hsvMat;
+    cv::cvtColor(inputMat, hsvMat, cv::COLOR_BGR2HSV);
+
+    // 색상 범위 설정
+    cv::Mat mask;
+    cv::inRange(hsvMat, cv::Scalar(hue - 10, 100, 100), cv::Scalar(hue + 10, 255, 255), mask);
+
+    // 결과 이미지 생성
+    cv::Mat resultMat;
+    inputMat.copyTo(resultMat, mask);
+
+    UIImage *resultImage = MatToUIImage(resultMat);
+    return resultImage;
+}
+
+@end
+```
+### Swift에서의 사용
+Swift 코드에서 detectColorInImage:withHue: 메서드를 호출하여 특정 색상을 검출하고 화면에 표시한다.
+```
+ViewController.swift
+
+import UIKit
+
+class ViewController: UIViewController {
+
+    @IBOutlet weak var imageView: UIImageView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        if let image = UIImage(named: "sample.jpg") {
+            let hue: Double = 60 // 초록색 검출
+            imageView.image = OpenCVInterface.detectColorInImage(image, withHue: hue)
+        }
+    }
+}
+```
+## 이미지에서 텍스트 찾아내기
+
+이 예제는 Tesseract OCR 엔진을 사용하여 이미지에서 텍스트를 인식한다.
+OCR 엔진은 다양한 언어의 텍스트를 인식할 수 있으며 여기서는 영어를 사용하였다.
+
+텍스트 인식은 스캔한 문서의 텍스트 추출, 번호판 인식, 비즈니스 카드 인식 등 다양한 분야에서 사용된다.
+
+### Tesseract 설치
+Tesseract를 설치해야 한다. CocoaPods을 사용하여 설치할 수 있다.
+```
+pod 'TesseractOCRiOS', '5.0.0'
+```
+### Objective-C++ 인터페이스 생성
+텍스트 인식 메서드를 추가하기 위한 인터페이스이다.
+```
+OpenCVInterface.h
+
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+NS_ASSUME_NONNULL_BEGIN
+
+@interface OpenCVInterface : NSObject
+
++ (NSString *)recognizeTextInImage:(UIImage *)image;
+
+@end
+
+NS_ASSUME_NONNULL_END
+```
+### Objective-C++ 구현
+텍스트를 인식하는 메서드를 구현한다.
+```
+OpenCVInterface.mm
+
+#import "OpenCVInterface.h"
+#import <opencv2/opencv.hpp>
+#import <TesseractOCR/TesseractOCR.h>
+
+@implementation OpenCVInterface
+
++ (NSString *)recognizeTextInImage:(UIImage *)image {
+    G8Tesseract *tesseract = [[G8Tesseract alloc] initWithLanguage:@"eng"];
+    tesseract.image = image;
+    [tesseract recognize];
+    
+    return [tesseract recognizedText];
+}
+
+@end
+```
+### Swift에서의 사용
+Swift 코드에서 recognizeTextInImage: 메서드를 호출하여 이미지에서 텍스트를 인식하고 화면에 표시한다.
+```
+ViewController.swift
+
+import UIKit
+
+class ViewController: UIViewController {
+
+    @IBOutlet weak var textView: UITextView!
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        if let image = UIImage(named: "text_sample.jpg") {
+            textView.text = OpenCVInterface.recognizeTextInImage(image)
+        }
+    }
+}
+```
+
+
+## 이미지에서 다각형 감지하기
+
+#### 이미지 로드와 전처리
+원본 이미지를 로드한 후 그레이스케일로 변환하고 적응 임계값을 적용하여 이진화한다.
+#### 다각형 감지
+이진화된 이미지에서 윤곽선을 찾고 윤곽선을 근사하여 다각형을 감지한다.
+#### 다각형 분석
+각 다각형의 꼭지점 수와 각도를 계산한다.
+
+### 이미지 로드와 전처리
+먼저 이미지를 로드하고 필터링 및 이진화를 통해 전처리를 수행한다.
+
+```
+import UIKit
+
+func loadImageAndPreprocess(named imageName: String) -> cv::Mat? {
+    guard let image = UIImage(named: imageName) else { return nil }
+    let mat = cv::Mat(image)
+    let grayMat = mat.grayScale()
+    let binaryMat = grayMat.adaptiveThreshold()
+    return binaryMat
+}
+```
+### 다각형 감지
+이진화된 이미지에서 윤곽선을 찾고, 윤곽선을 근사하여 다각형을 감지한다.
+```
+func detectPolygons(in binaryMat: cv::Mat) -> [cv::Mat] {
+    let contours = binaryMat.findContours()
+    return contours.map { contour in
+        return contour.approxPolyDP(epsilon: 5)
+    }
+}
+```
+### 다각형 분석
+다각형의 모서리 수와 각도를 분석한다.
+
+```
+func analyzePolygon(_ polygon: cv::Mat) -> (vertices: Int, angles: [Double]) {
+    let vertices = polygon.rows
+    var angles = [Double]()
+    for i in 0..<vertices {
+        let angle = polygon.angleAtVertex(index: i)
+        angles.append(angle)
+    }
+    return (vertices, angles)
+}
+```
+### 결과 출력
+감지된 다각형과 그 특성을 출력한다.
+```
+if let binaryMat = loadImageAndPreprocess(named: "polygon_sample.jpg") {
+    let polygons = detectPolygons(in: binaryMat)
+    for polygon in polygons {
+        let (vertices, angles) = analyzePolygon(polygon)
+        print("Vertices: \(vertices), Angles: \(angles)")
+    }
+}
+```
+
+## 손동작 인식하기
+
+#### 손동작 인식
+카메라에서 캡처된 영상에서 피부색에 해당하는 영역을 찾고 그 중 가장 큰 영역을 손으로 간주하여 중심점을 찾는다.
+#### 그림판 작동
+인식된 손동작의 위치에 따라 가상 그림판에 원을 그려 그림을 완성한다.
+
+### 손동작 인식
+카메라에서 캡처된 영상에서 손동작을 인식한다.
+
+```
+func detectHandGesture(in frame: cv::Mat) -> cv::Point? {
+    let skinMask = frame.extractSkinMask()
+    let contours = skinMask.findLargestContour()
+    let handContour = contours.approxPolyDP(epsilon: 5)
+    let centroid = handContour.centroid()
+    return centroid
+}
+```
+### 그림판 작동
+인식된 손동작의 위치에 따라 그림을 그린다.
+```
+swift
+Copy code
+func drawOnCanvas(centroid: cv::Point, in canvas: inout cv::Mat) {
+    canvas.drawCircle(center: centroid, radius: 5, color: cv::Scalar(255, 0, 0), thickness: -1)
+}
+```
+### 메인 루프
+카메라로부터 연속된 프레임을 읽어 손동작을 인식하고 가상 그림판에 그림을 그린다.
+```
+var canvas = cv::Mat(size: frameSize, type: cv::CV_8UC3, scalar: cv::Scalar(255, 255, 255))
+while true {
+    guard let frame = capture.read() else { break }
+    if let centroid = detectHandGesture(in: frame) {
+        drawOnCanvas(centroid: centroid, in: &canvas)
+    }
+    cv::imshow(windowName: "Virtual Drawing Board", mat: canvas)
+}
+```
