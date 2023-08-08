@@ -1,0 +1,83 @@
+---
+title: perl Moose 프레임워크 튜토리얼2 메소드와 객체 생성 
+description: 'Perl 객체 지향 프로그래밍을 위한 Moose 강의2 메소드와 객체 생성'
+date: August 8 2023
+---
+
+지난 게시물에 이어 메소드와 객체를 생성해보겠다.
+
+## 메소드 정의
+
+메소드는 일반적인 Perl 서브루틴처럼 정의할 수 있다.
+
+```
+sub greet {
+    my $self = shift;
+    return "Hello, my name is " . $self->name;
+}
+```
+
+### 문법 설명
+
+먼저 sub 키워드를 사용하여 서브루틴(함수의 역할)을 정의한다.
+여기에서는 greet라는 이름의 메소드를 정의하고 있다.
+
+메소드 내부에서는 첫 번째 인자로 항상 객체 자신을 받다.
+Perl에서는 이것을 $self라고 흔히 지칭한다.
+이 $self는 메소드가 호출되는 객체의 인스턴스를 참조한다.
+
+my $self = shift;는 배열의 첫 번째 요소를 제거하고 반환하는 shift 함수를 사용해서
+메소드에 전달된 첫 번째 인자(즉 객체 자신)를 $self 변수에 할당한다.
+
+return "Hello my name is " . $self->name; 부분에서는 $self->name을 사용하여 name 속성의 값을 가져온다.
+이 name은 이전에 속성으로 정의되었다. 여기서 -> 연산자는 객체의 메소드나 속성에 접근하기 위해 사용된다.
+
+따라서 greet 메소드는 해당 Person 객체의 name 속성을 사용하여 인사말을 반환한다.
+무슨 말이냐 하면 name 속성이 'Alice'로 설정된 Person 객체가 있다면 greet 메소드를 호출하면 "Hello my name is Alice"라는 문자열을 반환한다.
+
+## 객체를 생성하고 사용하는 방법
+
+객체 생성 및 사용
+
+'new' 메소드를 이용하여 Moose 클래스의 객체를 생성할 수 있다.
+이후에는 생성된 객체를 이용하여 메소드를 호출하거나 속성에 접근할 수 있다.
+
+```
+my $person = Person->new(name => 'John', age => 30);
+print $person->greet;  # Hello, my name is John
+```
+
+### 코드 뜯어보기
+
+해당 코드 조각은 Moose를 사용하여 Perl 클래스의 객체를 생성하고 사용하는 방법을 보여준다.
+
+#### 객체 생성
+
+```
+Person->new(name => 'John', age => 30);
+```
+
+new는 Moose에서 클래스의 객체를 생성하는 데 사용되는 기본 메서드이다.
+Person->new는 Person 클래스의 객체를 생성한다.
+name => 'John'과 age => 30은 생성자에 전달되는 인자이다. 이 인자들은 Person 클래스에 정의된 속성에 해당한다.
+위의 코드는 name 속성을 'John'으로 age 속성을 30으로 설정한 Person 객체를 생성한다.
+
+#### 변수에 객체 저장
+
+```
+my $person = ...
+```
+
+생성된 Person 객체는 $person이라는 스칼라 변수에 저장된다.
+이후 코드에서 $person을 통해 해당 객체에 접근하고 메서드를 호출하거나 속성에 접근할 수 있다.
+
+#### 메서드 호출
+
+```
+print $person->greet;
+```
+
+$person->greet는 $person 객체에 대해 greet 메서드를 호출하는 코드이다.
+이전에 우리가 greet 메서드에 대해 설명했듯이 이 메서드는 "Hello, my name is "라는 문자열과 객체의 name 속성 값을 연결하여 반환한다.
+따라서 $person 객체의 name 속성 값이 'John'이므로 print $person->greet; 코드는 "Hello, my name is John"이라는 문자열을 출력한다.
+종합하면 위의 코드 조각은 Person 클래스의 객체를 생성하고 해당 객체의 greet 메서드를 호출하여 결과를 출력하는 예제를 보여준다.
