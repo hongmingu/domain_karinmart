@@ -1,0 +1,108 @@
+---
+title: GeoDjango 사용법 model과 view에 대해 알아보자
+description: 'geodjango를 쓰기 위한 model과 view 사용법'
+date: August 10 2023
+---
+이 게시물에선 Geodjango의 구조와 모델, 뷰 등에 대해 알아볼 것이다.
+## GeoDjango로 위치 기반 서비스 구축하기
+
+### 시작하기 전 준비
+GeoDjango는 Django 프로젝트에 위치 기반 기능을 추가하는 데 필요한 도구를 제공한다. 
+https://docs.djangoproject.com/en/4.2/ref/contrib/gis/
+여기를 참고하라.
+
+여기서는 간단한 게시글에 위치 정보를 추가하는 방법을 소개한다.
+
+### 모델 설정
+models.py 파일에서 위치 정보를 포함하는 모델을 생성한다.
+
+```
+
+from django.contrib.gis.db import models
+from django.utils import timezone
+
+class LocationPost(models.Model):    
+    writer = models.ForeignKey(User, related_name='posts_written')
+    content = models.TextField(null=True, blank=True)
+    photo = models.ImageField(null=True, blank=True, upload_to='uploads/')
+    post_date = models.DateTimeField(default=timezone.now)
+    location = models.PointField()
+
+    def __str__(self):
+        return f"{self.writer.username}'s Post"
+```
+
+#### pointfield란?
+models.PointField:
+이 필드는 2차원의 점 데이터를 나타낸다. 
+이것은 어떤 특정 위치(주소, 랜드마크, 건물 등)를 지도 상의 한 점으로 나타내기 위해 사용된다.
+```
+location = models.PointField()
+```
+이 코드는 게시물에 위치 정보를 저장하는 데 사용될 location 필드를 추가하는 것이다. 여기서는 위도와 경도 정보를 이용하여 위치를 표현한다.
+
+### Admin 설정
+Django 관리자 페이지에서 위치 정보를 확인하고 수정하기 위해 admin.py에 모델을 등록한다.
+
+```
+from django.contrib import admin
+from .models import LocationPost
+
+admin.site.register(LocationPost)
+```
+GeoDjango는 Django Admin에서 위치 데이터를 시각적으로 표시하고 편집할 수 있는 위젯도 제공한다. 
+이걸 쓰면 관리자는 게시물의 위치를 직접 지도에서 선택하거나 수정할 수 있다.
+
+### views.py 설정
+뷰에서는 게시글과 관련된 위치 정보를 처리할 수 있도록 설정한다.
+```
+
+from django.contrib.gis.geos import GEOSGeometry
+from django.contrib.gis.measure import D
+from rest_framework import viewsets
+from .models import LocationPost
+from .serializers import LocationPostSerializer
+
+class LocationPostViewSet(viewsets.ModelViewSet):
+    serializer_class = LocationPostSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = LocationPost.objects.all()
+
+    def get_queryset(self):
+        latitude = self.request.GET.get('latitude', '0')
+        longitude = self.request.GET.get('longitude', '0')
+        user_location = GEOSGeometry(f'POINT({longitude} {latitude})', srid=4326)
+        nearby_posts = []
+        i = 0
+
+        while i < 10:
+            distance = i * 1000  # 1km increments
+            posts_within_distance = LocationPost.objects.filter(location__distance_lte=(user_location, D(m=distance)))
+            nearby_posts.extend(posts_within_distance)
+            
+            if len(nearby_posts) >= 50:
+                return nearby_posts[:50]
+            
+            i += 1
+        
+        return nearby_posts
+
+    def perform_create(self, serializer):
+        serializer.save(writer=self.request.user)
+```
+
+뷰에서는 사용자의 현재 위치를 기반으로 주변의 게시글을 찾을 수 있도록 한다.
+
+#### GEOSGeometry
+이는 지리적 객체를 생성하고 조작하는 데 사용되는 클래스이다. 
+위의 코드는 사용자의 위도와 경도 정보를 받아 POINT 객체를 생성하고 있다.
+
+#### D(m=distance)
+이는 거리를 나타내는 클래스이다. D 클래스는 여러 거리 단위(m, km, mi 등)를 지원한다. 예제에서는 메터 단위로 거리를 설정하고 있다.
+
+코드 내에서는 사용자 위치로부터 1km 간격으로 게시물을 검색하며, 최대 10km 범위 내에서 게시물을 반환하도록 설정하였다.
+
+#### perform_create 
+perform_create 메서드는 DRF(Django Rest Framework)에서 제공하는 ModelViewSet에서 객체 생성 시 호출되는 메서드이다. 이 메서드를 오버라이드하여 게시물 작성자를 현재 로그인한 사용자로 설정하도록 했다.
+
+GeoDjango를 사용하여 간단한 위치 기반 서비스를 만들어 봤다. 필요에 따라 모델, 뷰, 그 외의 설정을 추가하거나 수정하면서 입맛에 따라 바꿀 수 있다.
