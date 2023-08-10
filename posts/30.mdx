@@ -4,13 +4,13 @@ description: '주변 밝기 측정 및 감도 설정 앱 kotlin으로 제작'
 date: July 29 2023
 ---
 
-스마트워치에서 주변 밝기를 측정하려면 빛 센서에 접근해야함. 
+스마트워치에서 주변 밝기를 측정하려면 빛 센서에 접근해야한다. 
 
-스마트워치에 내장된 빛 센서가 없는 경우 이 기능은 작동하지 않을 수 있음. 
+스마트워치에 내장된 빛 센서가 없는 경우 이 기능은 작동하지 않을 수 있다. 
 
-이는 디바이스에 따라 다르므로 주의.
+이는 디바이스에 따라 다르므로 주의하자.
 
-안드로이드에서 빛 센서에 접근하려면 SensorManager 클래스를 사용. 
+안드로이드에서 빛 센서에 접근하려면 SensorManager 클래스를 사용하면 된다.
 
 ### mainactivity
 ```
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
 ```
 
-이번엔 웨어러블 앱에 특화시켜서 접근해볼 것임.
+이번엔 웨어러블 앱에 특화시켜서 접근해볼 것이다.
 
 ### 수정된 코드
 ```
@@ -121,13 +121,13 @@ class MainActivity : AmbientModeSupport.AmbientCallbackProvider, SensorEventList
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_LIGHT) {
             val lightValue = event.values[0]
-            // lightValue 변수는 현재 주변 밝기를 담고 있.
+            // lightValue 변수는 현재 주변 밝기를 담고 있으므로 유의.
             // 여기서 원하는 처리 - 예를 들어 화면의 색상이나 밝기를 조절하는 등...
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
-        // 센서 정확도가 변경되면 호출됩. 일반적으로 이 메서드는 센서 정확도에 따라 처리를 달리하거나, 정확도가 너무 낮을 경우 경고 메시지를 보여주는 등에 사용됨.
+        // 센서 정확도가 변경되면 호출됩. 일반적으로 이 메서드는 센서 정확도에 따라 처리를 달리하거나 정확도가 너무 낮을 경우 경고 메시지를 보여주는 용도로 사용.
         if (accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
             Toast.makeText(this, "Light sensor accuracy is unreliable, readings may be incorrect!", Toast.LENGTH_SHORT).show()
         }
@@ -135,12 +135,12 @@ class MainActivity : AmbientModeSupport.AmbientCallbackProvider, SensorEventList
 }
 ```
 
-그럼 이제 기기 흔들림에 따라 밝기도 연관지어서 작동하는 코드를 작성해볼 것임.
+그럼 이제 기기 흔들림에 따라 밝기도 연관지어서 작동하는 코드를 작성해볼 것이다.
 
 
 ### 흔들림에 따라 밝기도 연동
 
-SensorEventListener를 이용할 것임. 가속도 센서를 추가해서 센서의 변화를 밝기에 적용할 것임.
+SensorEventListener를 이용할 것이다. 가속도 센서를 추가해서 센서의 변화를 밝기에 적용할 것이다.
 
 ```
 import android.content.Context
@@ -214,7 +214,7 @@ class MainActivity : AmbientModeSupport.AmbientCallbackProvider, SensorEventList
     }
 
     override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) {
-        // 센서 정확도가 변경되면 호출. 일반적으로 이 메서드는 센서 정확도에 따라 처리를 달리하거나, 정확도가 너무 낮을 경우 경고 메시지를 보여주는 등에 사용.
+        // 센서 정확도가 변경되면 호출. 일반적으로 이 메서드는 센서 정확도에 따라 처리를 달리하거나 정확도가 너무 낮을 경우 경고 메시지를 보여주는 경우 사용.
         if (accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE) {
             Toast.makeText(this, "Sensor accuracy is unreliable, readings may be incorrect!", Toast.LENGTH_SHORT).show()
         }
