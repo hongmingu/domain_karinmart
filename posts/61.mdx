@@ -1,0 +1,106 @@
+---
+title: Django REST FRAMEWORK(DRF)의 request에 대해
+description: 'DRF의 Request들에 대해 알아본다'
+date: August 10 2023
+---
+이번엔 DRF(Django-REST-Framework)의 Request 속성에 대해 알아볼 것이다.
+
+## DRF(Django-REST-Framework)란?
+Django REST Framework (이하 DRF)의 Request 객체는 웹 API를 구축할 때 Django 에서처럼 Request요청사항을 다룰 수 있게 해준다. 
+기존 Django의 HttpRequest 객체를 기반으로 하되 RESTful 요청을 처리하기 위한 특화된 기능을 추가로 제공한다.
+
+### Request 파싱
+웹 API는 전통적인 HTML 폼 데이터 외에도 JSON, XML과 같은 다양한 형식의 데이터를 수용해야 한다. 이를 위해 DRF는 강력한 요청 파싱 메커니즘을 포함하고 있다.
+
+#### data 속성
+request.data는 클라이언트로부터 전송된 데이터를 파싱한 결과를 제공한다.
+
+#### 폼 데이터와 JSON 동시 처리
+DRF를 사용할 때, JSON 요청과 폼 데이터 요청을 동시에 처리할 수 있다. 따라서 요청의 본문을 따로 분석할 필요 없이 request.data를 통해 접근할 수 있다.
+
+```
+def create(request):
+    username = request.data.get('username')
+    email = request.data.get('email')
+    # 여기서 username과 email은 JSON 또는 폼 데이터 양식 중 하나에서 가져올 수 있다.
+```
+### query_params 속성
+이 속성은 URL의 쿼리 매개변수에 대한 접근을 제공한다.
+
+#### 직관적인 이름
+전통적인 Django에서는 request.GET을 사용하여 쿼리 매개변수에 접근하지만 DRF에서는 request.query_params를 권장한다. 
+이렇게 하면 코드의 가독성과 명확성이 향상됩니다.
+```
+def list_users(request):
+    search_query = request.query_params.get('search')
+    # search_query를 사용하여 사용자를 필터링한다.
+```
+### 콘텐츠 네고시에이션 (Content Negotiation)
+API는 다양한 클라이언트와 상호 작용해야하며 이들 클라이언트는 다양한 형식의 응답을 요청할 수 있다. 
+DRF의 콘텐츠 협상 기능은 이를 쉽게 처리할 수 있게 도와준다.
+
+### accepted_renderer
+이 속성은 클라이언트가 요청한 응답 형식을 결정하는 렌더러를 나타낸다. 클라이언트가 요청한 응답 형식에 따라 데이터를 주면 개발의 편리함이 올라간다.
+
+### 다양한 미디어 유형에 대응
+클라이언트가 JSON, XML 또는 HTML과 같은 특정 미디어 유형의 응답을 요청할 수 있다. accepted_renderer를 사용하여 이러한 요청에 적절하게 응답할 수 있다.
+```
+if isinstance(request.accepted_renderer, JSONRenderer):
+    # JSON 형식으로 데이터 처리
+```
+#### accepted_media_type
+이 속성은 클라이언트가 요청한 미디어 유형을 문자열로 반환한다.
+
+### 인증 (Authentication)
+API 보안은 따로 라이브러리가 많을 정도로 복잡하고 섬세한 작업을 요구한다.
+DRF의 Request 객체는 다양한 인증 방법을 지원하며 요청에 대한 인증 상태와 관련된 정보를 쉽게 얻을 수 있게 해 준다.
+
+#### .user 속성
+DRF는 인증된 요청의 경우 request.user를 통해 사용자 정보에 바로 접근할 수 있다.
+
+#### API에서의 사용자 인증
+
+DRF에서는 인증 토큰, 세션 모두 지원하고 다른 메커니즘을 사용하여 요청을 인증할 수도 있다. 
+request.user는 이러한 모든 메커니즘에 대해 동일하게 작동하므로 인증 방법에 상관없이 사용자 정보에 일관되게 접근할 수 있다.
+미들웨어 설정 등 추가적인 설정만 해주면 간편하게 사용할 수 있다.
+
+```
+if request.user.is_authenticated:
+    # 인증된 사용자에게만 특정 동작 수행
+```
+### auth 속성
+이 속성은 요청의 인증 컨텍스트를 제공한다.
+
+#### 인증 토큰 정보 얻기
+토큰 기반 인증을 사용할 때 request.auth는 해당 토큰 정보를 반환한다. 
+이를 사용하여 토큰 관련 작업을 수행할 수 있다.
+```
+token = request.auth
+if token.is_valid:
+    # 유효한 토큰에 따른 작업 수행
+```
+### 브라우저를 이용한 성능 향상
+DRF는 웹 브라우저를 통한 API 기능을 향상시키는 여러 방법을 제공한다. 
+이 기능들은 개발 과정을 간소화하고 브라우저 기반의 테스트 및 디버깅을 용이하게 한다.
+
+#### method 속성
+DRF의 request.method는 HTTP 메서드를 문자열로 반환한다.
+
+#### 브라우저에서의 PUT, PATCH, DELETE 지원:
+웹 브라우저는 전통적으로 GET 및 POST 메서드를 사용하는 게 편리하게 되어 있다. 
+하지만 DRF는 브라우저에서도 PUT, PATCH 및 DELETE 요청을 할 수 있도록 해준다. 
+이는 request.method를 통해 쉽게 확인할 수 있다.
+
+```
+if request.method == 'PUT':
+    # 데이터 업데이트 로직
+```
+### 기타 속성
+#### request.META
+이 속성은 원시 HTTP 요청에 관한 모든 정보를 포함하는 딕셔너리를 반환한다. 
+HTTP 헤더, 서버 정보 등의 상세한 데이터에 접근할 때 편리하다.
+
+#### request.session
+세션을 지원하는 인증 메커니즘을 사용할 때 request.session을 통해 세션 데이터에 접근할 수 있다.
+세션을 직접적으로 이용할 수 있으므로 여러 경우에 편리하게 사용할 수 있다. 
+나같은 경우는 사용자별 정보나 상태를 저장하고 검색하는 데 사용한다.
