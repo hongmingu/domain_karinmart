@@ -1,0 +1,201 @@
+---
+title: 안드로이드 자바로 무한스크롤 구현하기
+description: '안드로이드에서 무한스크롤을 라이브러리 없이 최대한 순수한 코드로 작성해보기'
+date: August 10 2023
+---
+이번엔 자바에서 무한스크롤을 구현하되 최대한 외부 라이브러리 없이 만들어보도록 하겠다.
+
+
+무한 스크롤은 사용자에게 끊임없이 콘텐츠를 제공하는 많은 앱에서 발견할 수 있는 UI/UX 패턴이다. 안드로이드에서는 RecyclerView와 함께 몇 가지 추가 기능을 활용하여 이를 구현할 수 있다. 
+안드로이드에서 자바를 사용하여 무한 스크롤을 구현해보자.
+라이브러리는 최대한 쓰지 않았다. 라이브러리를 쓰지 않고 만들면 나중에 코드에 대한 이해도가 올라가기 때문이다.
+
+## 개념 이해
+### 무한 스크롤(Infinite Scroll)
+스크롤이 페이지의 끝에 도달할 때마다 새로운 데이터를 자동으로 로드하여 사용자에게 끊임없는 스크롤 경험을 제공하는 UI/UX 패턴이다.
+
+## RecyclerView를 사용한 구현
+### RecyclerView와 필요한 도구 준비
+```
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.StaggeredGridLayoutManager;
+```
+### Endless Scroll 리스너 정의
+```
+public abstract class EndlessRecyclerViewScrollListener extends RecyclerView.OnScrollListener {
+    private int visibleThreshold = 5;
+    private int currentPage = 0;
+    private int previousTotalItemCount = 0;
+    private boolean loading = true;
+    private RecyclerView.LayoutManager layoutManager;
+
+    public EndlessRecyclerViewScrollListener(RecyclerView.LayoutManager layoutManager) {
+        this.layoutManager = layoutManager;
+    }
+
+    @Override
+    public void onScrolled(RecyclerView view, int dx, int dy) {
+        int totalItemCount = layoutManager.getItemCount();
+        int lastVisibleItemPosition = 0;
+
+        if (layoutManager instanceof StaggeredGridLayoutManager) {
+            int[] lastVisibleItemPositions = ((StaggeredGridLayoutManager) layoutManager).findLastVisibleItemPositions(null);
+            lastVisibleItemPosition = getLastVisibleItem(lastVisibleItemPositions);
+        } else if (layoutManager instanceof GridLayoutManager) {
+            lastVisibleItemPosition = ((GridLayoutManager) layoutManager).findLastVisibleItemPosition();
+        } else if (layoutManager instanceof LinearLayoutManager) {
+            lastVisibleItemPosition = ((LinearLayoutManager) layoutManager).findLastVisibleItemPosition();
+        }
+
+        if (totalItemCount < previousTotalItemCount) {
+            this.currentPage = 0;
+            this.previousTotalItemCount = totalItemCount;
+            this.loading = totalItemCount == 0;
+        }
+
+        if (loading && (totalItemCount > previousTotalItemCount)) {
+            loading = false;
+            previousTotalItemCount = totalItemCount;
+        }
+
+        if (!loading && (lastVisibleItemPosition + visibleThreshold) > totalItemCount) {
+            currentPage++;
+            onLoadMore(currentPage, totalItemCount, view);
+            loading = true;
+        }
+    }
+
+    public void resetState() {
+        this.currentPage = 0;
+        this.previousTotalItemCount = 0;
+        this.loading = true;
+    }
+
+    public abstract void onLoadMore(int page, int totalItemsCount, RecyclerView view);
+
+    private int getLastVisibleItem(int[] lastVisibleItemPositions) {
+        int maxSize = 0;
+        for (int position : lastVisibleItemPositions) {
+            if (position > maxSize) {
+                maxSize = position;
+            }
+        }
+        return maxSize;
+    }
+}
+```
+## 사용법
+RecyclerView 인스턴스 생성 및 설정
+EndlessRecyclerViewScrollListener 인스턴스를 RecyclerView에 추가
+onLoadMore 메서드에서 필요한 데이터 로드 로직을 구현
+```
+RecyclerView recyclerView = findViewById(R.id.my_recycler_view);
+LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+recyclerView.setLayoutManager(layoutManager);
+
+recyclerView.addOnScrollListener(new EndlessRecyclerViewScrollListener(layoutManager) {
+    @Override
+    public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+        // 데이터 로드 로직 (예: 네트워크 요청)
+    }
+});
+```
+이러한 방식으로 구현하면 사용자가 스크롤의 끝에 도달할 때마다 onLoadMore 메서드가 호출되어 추가 콘텐츠를 로드한다.
+
+## 데이터 로딩과 갱신
+무한 스크롤을 구현할 때 가장 중요한 부분은 실제로 새로운 데이터를 로드하고 RecyclerView를 갱신하는 것이다. 대개 API 호출을 통해 데이터를 가져오게 된다.
+
+### 네트워크 요청을 위한 Retrofit 설정
+가장 대표적인 네트워크 라이브러리 중 하나인 Retrofit을 사용하여 네트워크 요청을 구성한다.
+```
+implementation 'com.squareup.retrofit2:retrofit:2.x.x'
+implementation 'com.squareup.retrofit2:converter-gson:2.x.x'
+```
+### API 호출 설정
+예를 들어, 아래는 게시물을 페이지별로 불러오는 API 인터페이스이다.
+```
+public interface PostApi {
+    @GET("posts")
+    Call<List<Post>> getPosts(@Query("page") int page);
+}
+```
+### 데이터 로딩
+onLoadMore 메서드 내에서 API 호출을 통해 새로운 데이터를 로드하고 RecyclerView의 어댑터를 갱신한다.
+```
+@Override
+public void onLoadMore(int page, int totalItemsCount, RecyclerView view) {
+    PostApi api = retrofit.create(PostApi.class);
+    Call<List<Post>> call = api.getPosts(page);
+    call.enqueue(new Callback<List<Post>>() {
+        @Override
+        public void onResponse(Call<List<Post>> call, Response<List<Post>> response) {
+            if (response.isSuccessful() && response.body() != null) {
+                List<Post> newPosts = response.body();
+                postAdapter.addPosts(newPosts);
+            }
+        }
+
+        @Override
+        public void onFailure(Call<List<Post>> call, Throwable t) {
+            // Handle the error
+        }
+    });
+}
+```
+## 퍼포먼스 최적화
+무한 스크롤을 구현할 때 주의할 점은 퍼포먼스와 사용자 경험이다. 빠르게 스크롤하면 네트워크 요청이 빠르게 쌓이는 것을 방지하고자 로딩 상태를 체크한다.
+
+## 예외 처리
+네트워크 오류나 API의 데이터 끝에 도달한 경우 등 다양한 예외 상황을 처리해야 한다.
+
+##### 네트워크 오류
+네트워크 오류 발생 시 사용자에게 알려주는 토스트 메시지나 다이얼로그 표시
+##### 로드할 데이터 없음
+더 이상 로드할 데이터가 없는 경우 loading 변수를 false로 설정하여 추가 요청을 방지
+
+
+## 리사이클러뷰 어댑터 최적화
+무한 스크롤의 핵심은 데이터 로딩이다. 
+그런데 실제로 화면에 표시하는 것은 어댑터가 담당하므로 어댑터의 퍼포먼스 최적화는 필수이다.
+
+### DiffUtil 활용
+데이터가 추가될 때마다 RecyclerView 전체를 갱신하는 대신에 DiffUtil을 사용하여 변경된 항목만 갱신할 수 있다. 
+이렇게하면 퍼포먼스 향상과 깜박임 현상을 줄일 수 있다.
+```
+public class PostDiffCallback extends DiffUtil.Callback {
+    private final List<Post> oldPosts;
+    private final List<Post> newPosts;
+
+    public PostDiffCallback(List<Post> oldPosts, List<Post> newPosts) {
+        this.oldPosts = oldPosts;
+        this.newPosts = newPosts;
+    }
+
+    @Override
+    public int getOldListSize() {
+        return oldPosts.size();
+    }
+
+    @Override
+    public int getNewListSize() {
+        return newPosts.size();
+    }
+
+    @Override
+    public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+        return oldPosts.get(oldItemPosition).getId() == newPosts.get(newItemPosition).getId();
+    }
+
+    @Override
+    public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+        return oldPosts.get(oldItemPosition).equals(newPosts.get(newItemPosition));
+    }
+}
+```
+이렇게 정의한 PostDiffCallback을 사용하여 어댑터 내부에서 데이터가 변경될 때만 업데이트를 수행한다.
+
+### 뷰 홀더 패턴 활용
+뷰 홀더 패턴을 적절히 활용하여 뷰의 재사용성을 높이자. 이를 통해 스크롤 시 뷰 생성의 오버헤드를 줄일 수 있다.
+
