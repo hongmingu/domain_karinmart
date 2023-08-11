@@ -75,9 +75,11 @@ def custom_response(request):
     headers = {'Custom-Header': 'custom_value'}
     return Response(data, status=201, headers=headers)
 ```
-4. 응답의 조작
+### 응답의 조작
 Response 객체는 속성을 통해 세부 정보를 액세스하거나 수정할 수 있다
 ```
 response = Response(data)
 response['Cache-Control'] = 'no-cache'
 ```
+
+이렇게 실제로 response를 사용해봤는데 기존 장고보다 다양하게 구현할 부분들이 줄어들어 개발의 편의성이 올라간다. 
