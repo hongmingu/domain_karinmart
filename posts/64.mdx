@@ -3,8 +3,8 @@ title: ZSH 초스피드 강의4 zsh 스크립트 문법 기초
 description: 'ZSH의 스크립트에 활용되는 문법 내용을 알아보자 기초적인 반복문부터 배열 연산자 파라미터까지'
 date: August 11 2023
 ---
-이번엔 Zsh의 스크립트에 활용되는 기초적인 문법부터 배열, 연산자, 파라미터, 함수 까지 훑어본다.
 
+이번엔 Zsh의 스크립트에 활용되는 기초적인 문법부터 배열, 연산자, 파라미터, 함수 까지 훑어본다.
 
 ## Zsh 스크립트 기초
 Zsh 스크립트는 기본적으로 다른 쉘 스크립트와 유사한 문법을 사용한다. 그리고 .zsh 확장자로 저장할 수 있다.
@@ -72,13 +72,13 @@ echo $name
 ## 배열
 배열은 괄호 ()를 사용해 정의됩니다.
 ```
-colors=("red" "green" "blue")
-echo $colors[1]   # red
-echo $colors[2]   # green
+col_tuple=("red" "green" "blue")
+echo $col_tuple[1]   # red
+echo $col_tuple[2]   # green
 ```
 배열 전체를 참조할 때는 *를 사용한다.
 ```
-echo $colors[*]   # red green blue
+echo $col_tuple[*]   # red green blue
 ```
 ## 연산자
 Zsh에서는 수학 연산을 수행할 때 let 또는 (( ))를 사용할 수 있다.
@@ -107,8 +107,8 @@ for와 while을 사용하여 반복문을 작성한다.
 
 ### For Loop
 ```
-for color in red green blue; do
-    echo $color
+for col in red green blue; do
+    echo $col
 done
 ```
 ### While Loop

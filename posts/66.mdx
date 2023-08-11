@@ -1,0 +1,82 @@
+---
+title: Django REST FRAMEWORK(DRF)의 response에 대해
+description: 'DRF의 Response들에 대해 알아본다'
+date: August 11 2023
+---
+이번엔 DRF(Django-REST-Framework)의 Response 속성에 대해 알아볼 것이다.
+
+Django에서는 HTTP 응답을 관리하는 HttpResponse 객체를 제공한다. 
+하지만 기본적인 HttpResponse 객체와는 달리 TemplateResponse 객체는 응답을 계산하기 위해 뷰에 의해 제공된 컨텍스트의 세부 정보를 유지한다. 
+최종 응답의 출력은 응답 프로세스의 뒷 부분에서 필요할 때까지 실행되지 않는다.
+
+REST 프레임워크는 클라이언트의 요청에 따라 여러 콘텐츠 유형으로 렌더링될 수 있는 콘텐츠를 반환하게 해주는 Response 클래스를 통해 HTTP 콘텐츠 네고시에이션(상호 작용)을 지원한다. 
+Response 클래스는 Django의 SimpleTemplateResponse를 서브 클래스로 하며 이 클래스의 객체는 원시 파이썬 자료형으로 구성된 데이터로 초기화된다. 
+그 다음에 REST 프레임워크는 표준 HTTP 콘텐츠 네고시에이션(상호 작용)을 사용하여 최종 응답 콘텐츠가 어떻게 렌더링되어야 하는지 결정한다.
+
+Response 클래스를 굳이 사용할 필요는 없다. 
+필요에 따라 일반 HttpResponse나 StreamingHttpResponse 객체를 뷰에서 반환할 수 있다. 
+그러나 Response 클래스를 사용하면 여러 형식으로 렌더링될 수 있는 콘텐츠 네고시에이션(상호 작용)된 Web API 응답을 반환하기 위한 더 깔끔한 인터페이스가 있기 때문에 좀 더 편리할 수 있다.
+
+특정한 이유로 REST 프레임워크를 크게 커스터마이징하고 싶지 않다면 응답 객체를 반환하는 뷰에는 항상 APIView 클래스나 @api_view 함수를 사용해야 한다. 
+이렇게 하면 뷰에서 응답이 반환되기 전에 뷰가 콘텐츠 네고시에이션(상호 작용)을 수행하고 응답에 적절한 렌더러를 선택할 수 있다.
+
+응답을 생성할 때는 일반적인 HttpResponse 객체와는 달리 렌더링된 콘텐츠로 Response 객체를 인스턴스화하지 않는다. 
+대신 프리미티브 파이썬 자료형으로 구성된 렌더링되지 않은 데이터를 전달한다. 
+Response 클래스가 사용하는 렌더러는 Django 모델 인스턴스와 같은 복잡한 데이터 유형을 기본적으로 처리할 수 없으므로 Response 객체를 생성하기 전에 데이터를 원시 데이터 유형으로 직렬화해야 한다.
+
+
+기본적인 코드와 함께 알아보자
+
+### 기본 HttpResponse vs TemplateResponse
+기본적인 HttpResponse는 단순히 HTML 콘텐츠나 텍스트를 반환하는 데 사용됩니다. 이걸로 그냥 일반 장고처럼 쓸 수 있다.
+```
+from django.http import HttpResponse
+
+def simple_response(request):
+    return HttpResponse("Hello, Django!")
+```
+반면 TemplateResponse는 뷰에서 제공된 컨텍스트의 세부 정보를 유지하며 필요에 따라 지연된 렌더링이 가능하다.
+장고 템플릿을 이용해서 기존 장고처럼 사용할 수 있게 된다.
+
+### REST 프레임워크의 Response
+REST 프레임워크는 클라이언트 요청에 따라 다양한 콘텐츠 유형으로 응답을 렌더링하는 Response 클래스를 탑재하고 있다.
+```
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+
+@api_view(['GET'])
+def api_response(request):
+    data = {"message": "Hello, REST Framework!"}
+    return Response(data)
+```
+여기서 Response는 자동으로 JSON 형식으로 응답을 렌더링한다.
+
+### Response의 구성 요소
+Response 객체는 다양한 인자를 받을 수 있다
+```
+Response(data, status=None, template_name=None, headers=None, content_type=None)
+```
+#### data
+응답에 포함될 데이터이다.
+#### status
+HTTP 응답 상태 코드. 기본값은 200이다.
+#### template_name
+HTMLRenderer와 같은 템플릿 렌더러가 선택될 경우 사용될 템플릿 이름이다.
+#### headers
+응답에 포함될 HTTP 헤더의 사전이다.
+#### content_type
+응답의 콘텐츠 유형이다.
+#### 실제 사용 방법
+```
+@api_view(['GET'])
+def custom_response(request):
+    data = {"message": "Customized Response"}
+    headers = {'Custom-Header': 'custom_value'}
+    return Response(data, status=201, headers=headers)
+```
+4. 응답의 조작
+Response 객체는 속성을 통해 세부 정보를 액세스하거나 수정할 수 있다
+```
+response = Response(data)
+response['Cache-Control'] = 'no-cache'
+```
