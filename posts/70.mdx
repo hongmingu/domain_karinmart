@@ -273,19 +273,21 @@ type Item = {
 태그명도 직관적으로 되어있다. 컨텍스트가 잇으니 그 안에 드랍가능한 공간이 있어야 하고 그 안에 드래그 가능한 아이템이 있어야 한다는 식이다.
 
 주의할 것은 ref={provided.innerRef} 이부분인데 ref를 통해서 브라우저가 위치랑 참조값을 알 수 있도록 해줘야한다.
+```
 ref={provided.innerRef}
 {...provided.draggableProps}
 {...provided.dragHandleProps}
+```
 
 이 부분들 역시 드래거블에도 ref를 제공해줘야 함을 의미한다. 
 
 스타일 부분이 특이한데
-
+```
 style={getItemStyle(
 snapshot.isDragging,
 provided.draggableProps.style
 )}
-
+```
 이걸 보면 스냅샷에 따른 스타일 설정을 할 수 있다. 이 부분을 섬세하게 조정하면 세련된 드래그앤드롭 기능 구현이 가능하다.
 
 이상으로 beautiful-drag-and-drop을 타입스크립트에서 사용해봤다. 실제 구현하는 것보다 문서 한 번 읽고 쓰는 게 빠르고 편리하다.
