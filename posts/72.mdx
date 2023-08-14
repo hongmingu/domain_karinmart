@@ -1,0 +1,175 @@
+---
+title: flutter getx 사용하기 getx controller
+description: 'getx controller로 스테이트 구성하고 사용하기'
+date: August 14 2023
+---
+
+getX는 플러터에서 사용되는 상태관리 라이브러리이다.
+
+getX를 사용하면 복잡한 상태관리를 프로바이더 같은 거 필요없이 사용할 수 있는데 그 편리함이 말이 안된다.
+
+이번에는 기본적인 GetX사용방법과 리스트랑 맵을 이용한 상태관리방법을 알아볼 것이다.
+
+## 기본 GetX 컨트롤러 실행
+
+```
+import 'dart:convert';
+import 'package:get/get.dart';
+
+class PostController extends GetxController {
+
+  @override
+  void onInit() {
+    super.onInit();
+  }
+
+}
+```
+
+이것만 있으면 getX를 사용할 준비가 끝났다고 생각해도 된다.
+아주 간단하다. 이렇게 한 다음에 ```main.dart```로 가서 
+
+```
+import 'package:get/get.dart';
+import 'package:secondhand/controllers/post_controller.dart';
+
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  late Widget _currentPage;
+
+  @override
+  Widget build(BuildContext context) {
+    return GetMaterialApp(
+      title: 'YourTitle',
+      home: GetBuilder<AuthenticationState>(
+        builder: (_) {
+          if (!(_.isInitiated)) {
+            _currentPage = _.routeList[2];
+          } else {
+            if (_.isAuthenticated) {
+              _currentPage = _.routeList[1];
+            } else {
+              _currentPage = _.routeList[0];
+            }
+          }
+          return _currentPage;
+        },
+      ),
+      initialBinding: BindingsBuilder(() {
+        Get.put(PostController());
+      }),
+    );
+  }
+}
+```
+
+이렇게 해주면 된다. GetMaterialApp 이걸 이용해주고 ```Get.put(PostController());``` 이걸 바인딩해주면 이제 어디서든 쓸 수있게 된다.
+
+GetMaterialApp이걸로 꼭 전체를 묶어줘야 한다.
+
+그 다음에 실사용에 들어가보자.
+
+## 실제 getx사용하기
+
+이제 라우트에서 직접 호출해서 사용하면 된다.
+
+### post_route.dart
+```
+import 'package:flutter/cupertino.dart';
+import 'package:get/get.dart';
+import 'package:secondhand/controllers/post_controller.dart';
+import 'package:secondhand/controllers/post_like_controller.dart';
+```
+여기서 보이다시피 몇개의 컨트롤러를 라우트에서 사용하건 무방하다. 다양한 컨트롤러로 분리한 후 원하는대로 사용하자
+
+그럼 이제 State만 변경해주면 되는데 여길 보자
+
+```
+
+class _PostRouteState extends State<PostRoute> {
+  PostController postController = Get.find();
+  @override
+  void initState() {
+    super.initState();
+  }
+}
+```
+
+이렇게 불러와주면 끝이다. 이제 그럼 스테이트 내에서 사용이 가능하다
+보이다시피 따로 할 건 없다. initState도 그대로 두고 써도 된다.
+
+### Widget build(BuildContext) 쪽 코드
+
+여기는 이제 불러오는대로 그대로 쓰면 된다. 
+
+```
+ @override
+  Widget build(BuildContext context) {
+    if (postController.visibleIndex > 0) {
+      beforePostBundle =
+          postController.postBundleList[postController.visibleIndex - 1];
+    }
+    currentPostBundle =
+        postController.postBundleList[postController.visibleIndex];
+
+    if (postController.visibleIndex <
+        postController.postBundleList.length - 1) {
+      afterPostBundle =
+          postController.postBundleList[postController.visibleIndex + 1];
+    }
+
+    return Stack(
+      children: [
+        if (postController.visibleIndex > 0)
+          Positioned(
+            bottom: _containerSize.height - _visibleOffset,
+            child: Stack(children: [
+              beforePostBundle!.getCurrentWidgetWithInterface(),
+            ]),
+          ),
+      ]
+
+```
+
+
+이렇게 postController를 한 번만 초기화 해서 불러오면 아무데서나 원하는대로 쓸 수가 있다.
+```postController.postBundleList[postController.visibleIndex - 1];``` 이렇게 써도되고 
+
+return 되는 코드 안에서 
+
+```
+if (postController.visibleIndex > 0)
+          Positioned(
+            bottom: _containerSize.height - _visibleOffset,
+            child: Stack(children: [
+              beforePostBundle!.getCurrentWidgetWithInterface(),
+            ]),
+          ),
+```
+
+이렇게 조건부로 써도 된다.
+
+### post_controller.dart
+```
+  int visibleIndex = 0;
+
+  void changeVisibleIndex(int index) {
+    visibleIndex = index;
+    print("changeVisibleIndex + setCurrentVisiblePostView");
+    PostViewController.setCurrentVisiblePostView();
+    print("changeVisibleIndex + setCurrentVisiblePostThumbnailView");
+    PostViewController.setCurrentVisiblePostThumbnailView();
+  }
+
+```
+
+이런식으로 써도 되는데 변수명은 컨트롤러 안에서 사용되니 이걸 스테이트로 쓴다고 이해하면 된다. 
+
+리액트는 화면별로 상태관리가 되고 리덕스를 이용해야 프로젝트 내에서 사용되는데 이건 프로젝트 내에서 사용되는게 기본적으로 세팅되어있으니
+
+스테이트보다 간편하게 쓰는 리덕스라고 이해해도 되지 않을까 싶다.
