@@ -1,0 +1,71 @@
+---
+title: zsh에서 파일 복사하기 shutil.copy2 사용 중 퍼미션 에러 발생시 shutil.copy와 shutil.copy2 차이
+description: 'zsh에서 파일을 복사하는 명령어인 shutil.copy와 shutil.copy2의 비교'
+date: August 15 2023
+---
+
+zsh로 파일을 복사하기 위해서는 ```shutil.copy()``` 혹은 ```shutil.copy2()```를 사용하면 된다.
+
+### 발생한 에러
+
+```
+PermissionError: [Errno 1] Operation not permitted: '/Users/moy/development/tool/g/video/source/1/1.mp4'
+```
+
+이런 에러가 발생했다. 난 shutil.copy2()를 사용하고 있었다. 이건 다음과 같은 방법으로 해결할 수 있다. 
+
+파일 또는 디렉터리에 대한 쓰기 권한이 없을 때 발생하는 오류이므로
+나같은 경우에는 쓰기 작업을 시도했지만 해당 경로에 권한이 없어서 작업이 실패한 것이다.
+
+
+그럼 다음과 같은 조치를 취할 수 있다.
+
+### 권한 변경
+chmod 명령어를 쓰자. 
+
+```
+chmod +w /Users/moy/development/tool/g/video/source/1/
+```
+이런식으로 소유권을 바꿔주면 해결된다. 근데 이걸로도 잘 안되는 경우가 있다. 그런 경우엔 ```shutil.copy()```를 쓰면 된다.
+
+이걸 파이썬 스크립트로 실행하려면 os 모듈을 쓰면 된다.
+
+```
+# 권한을 변경할 위치 지정
+destination_path = "/Users/moy/development/tool/g/video/source/1" 
+
+# 위치가 존재하지 않으면 폴더를 생성
+if not os.path.exists(destination_path):
+    os.makedirs(destination_path)
+# 쓰기 권한이 없다면 권한 부여
+if not os.access(destination_path, os.W_OK):
+    os.chmod(destination_path, 0o755)
+```
+이렇게 하면 경로에 한번에 권한을 지정할 수 있다.
+
+
+### shutil.copy() 사용하기
+
+그럼에도 불구하고 제대로 작동하지 않을 수 있다. 나같은 경우엔 동영상 파일을 조작하려고 했는데 맥os에선 파일의 메타데이터까지 복사할때 chflags 호출을 이용하기 때문에 문제가 발생했다.
+
+난 간단하게 shutil.copy를 사용하기로 했다. 그러면 파일의 메타데이터 없이 파일의 내용만 복사하게 된다.
+
+```
+shutil.copy2(original_path, os.path.join(destination_path, new_filename))
+```
+이렇게 하면 된다.
+
+근데 이렇게 하지 않고 chflags를 복사할 때 생기는 에러를 무시하는 방법도 가능하다.
+
+```
+shutil.copy(original_path, os.path.join(destination_path, new_filename))
+try:
+    shutil.copystat(original_path, os.path.join(destination_path, new_filename))
+except PermissionError:
+    pass
+```
+
+이러면 에러를 트라이캐치로 잡아내므로 문제가 발생할 경우 무시하고 넘어가게 된다. 
+
+
+
