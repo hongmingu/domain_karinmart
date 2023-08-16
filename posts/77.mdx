@@ -1,0 +1,146 @@
+---
+title: react에서 데이터의 불변성 유지하면서 상태 업데이트
+description: 'immer js를 이용한 데이터의 불변성 반영 상태 업데이트'
+date: August 17 2023
+---
+
+현재 클래스별로 나눠서 데이터를 관리하고 있는데 클래스를 통째로 상태를 업데이트 해야할 일이 생겼다.
+
+### 현재 상태 사용중인 컴포넌트 useState
+
+```
+const [questionCombined, setQuestionCombined] =
+    useState<QuestionCombined | null>(null);
+```
+
+### useState에 사용되는 클래스
+
+```
+class QuestionCombined {
+  _question: Question;
+  _question_images: QuestionImage[];
+  _question_replys: QuestionReply[];
+
+  constructor(schema: QuestionCombinedSchema) {
+    this._question = new Question(schema.question);
+    this._question_images = schema.question_images.map(
+      (imgSchema) => new QuestionImage(imgSchema)
+    );
+    this._question_replys = schema.question_replys.map(
+      (replySchema) => new QuestionReply(replySchema)
+    );
+  }
+}
+```
+
+클래스를 보면 알 수 있다시피 클래스 내에 클래스들을 속성값으로 가지고 있다.
+
+즉 프리미티브 속성이 아니라는 뜻이다.
+
+난 API서버에서 데이터를 받아와서 저 객체에 있는 `_question_replys`를 업데이트 해야 한다.
+
+```
+
+      const response = await axios.post(
+        urls.apiQuestionReplyWrite,
+        {
+          question_id: questionCombined?._question._id,
+          content: newContent,
+        }
+      );
+      switch (response.status) {
+        case 200:
+          const questionReply = new QuestionReply(response.data);
+          break;
+        default:
+          break;
+      }
+
+```
+
+이런식으로 하는 것이다. 이렇게 새로 데이터를 가져오게 되면 이미 있는 데이터에 추가해줘야 하는데 이 부분이 바로 상태 관리랑 연결되어 있어서 바로 적용되길 바란 것이다.
+
+우선 그냥 그대로 spread기능을 이용해서 새롭게 리스트를 만들어서 새롭게 객체에 넣어버리는 방법을 사용해보자.
+
+### 라이브러리 없이 새로이 객체를 만들어서 처리하기
+
+새롭게 객체를 생성하는 것은 스테이트 관리를 할때 스테이트 자체를 바꾸는 것보다 새롭게 객체를 스테이트에 넣는 것이 안정적이기 때문이다.
+그렇지 않게 하면 안정적이지 못하다면서 리액트 관습상 추천하지 않는 모양이다.
+
+```
+  const questionReply = new QuestionReply(response.data);
+
+  // 기존의 questionCombined를 복사하고 _question_replys에 새로운 reply를 추가하자
+  const updatedQuestionCombined = {
+    ...questionCombined,
+    _question_replys: [...(questionCombined?._question_replys || []), questionReply]
+  };
+
+  setQuestionCombined(updatedQuestionCombined);
+```
+
+`[...(questionCombined?._question_replys || []), questionReply]` 이렇게 하면 기존에 있는 코드를 유지하면서 새 코드를 추가해준다.
+
+근데 이렇게 하게 되면 항상 ... 을 이용해서 처리하는 등 좀 귀찮고 복잡하다. 그래서 이걸 쉽게 해주는 라이브러리가 immer.js이다.
+
+### immer.js 사용하기
+
+immer.js를 사용하면 produce 와 draft를 이용해 저 과정을 훨씬 간결하게 할 수 있다.
+
+우선 immer를 설치하자.
+```
+npm install immer
+```
+
+그 다음 아까 했던 코드를 immer를 이용해 재구현해보자
+
+```
+
+import produce from 'immer';
+
+
+case 200:
+  const questionReply = new QuestionReply(response.data);
+  
+  const updatedQuestionCombined = produce(questionCombined, draft => {
+    if (draft && draft._question_replys) {
+      draft._question_replys.push(questionReply);
+    }
+  });
+
+  setQuestionCombined(updatedQuestionCombined);
+  break;
+
+```
+이렇게 하면 아까와 동일한 내용으로 작동하게 된다.
+
+훨씬 직관적이고 간결해졌다.
+```
+      draft._question_replys.push(questionReply);
+```
+
+이렇게 기존 자바스크립트 코드랑 비슷한 방식으로 이용할 수 있다. 외우기도 쉽고 읽기도 쉬워졌다.
+
+대신 유의할 것은 immer가 웬만하면 primitive type 들을 다루는 데에 적합하지 class object같은 객체들을 다루는데에는 다른 조치를 취해줘야 한다는 것이다.
+
+아까처럼 클래스를 그대로 immer로 사용하려고 한다면 이런 에러 메시지를 마주하게 된다.
+
+```
+Error: [Immer] produce can only be called on things that are draftable: plain objects, arrays, Map, Set or classes that are marked with '[immerable]: true'. Got '[object Object]
+```
+이제 이걸 해결하자.
+
+### 클래스에 immerable 추가
+
+```
+import { immerable } from 'immer';
+
+class QuestionCombined {
+  [immerable] = true;
+  // 기존코드
+}
+
+```
+
+이렇게 클래스에 직접 ```[immerable] = true;``` 를 추가해주면 정상적으로 작동한다.
+
