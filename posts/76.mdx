@@ -1,7 +1,7 @@
 ---
 title: zsh에서 파일 복사하기 shutil.copy2 사용 중 퍼미션 에러 발생시 shutil.copy와 shutil.copy2 차이
 description: 'zsh에서 파일을 복사하는 명령어인 shutil.copy와 shutil.copy2의 비교'
-date: August 15 2023
+date: August 16 2023
 ---
 
 zsh로 파일을 복사하기 위해서는 ```shutil.copy()``` 혹은 ```shutil.copy2()```를 사용하면 된다.
@@ -68,6 +68,3 @@ except PermissionError:
 ```
 
 이러면 에러를 트라이캐치로 잡아내므로 문제가 발생할 경우 무시하고 넘어가게 된다. 
-
-
-
