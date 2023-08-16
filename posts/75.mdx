@@ -71,7 +71,7 @@ const after = useFirstStore((state) => state.after)
 ```
 이런식으로 하나 하나 고르는 것도 가능하다
 
-### 화살표 함수 이용하기
+### 화살표 함수 이용하기(동일성 함수 재지정)
 ```
 import { createWithEqualityFn } from 'zustand/traditional'
 import { shallow } from 'zustand/shallow'
@@ -93,18 +93,26 @@ const useFirstStore = createWithEqualityFn(
 ```
 이 부분들처럼 직접 함수를 지정해줄 수 있다. 리덕스의 리듀서같은 역할이다.
 
+구조분해할당을 이용해서 익숙한 방법으로 하는 방법이다.
+```
 // 직접고르기 자바스크립트의 구조 분해 할당 이용
 const { preys, friends } = useFirstStore(
   (state) => ({ preys: state.preys, friends: state.friends }),
   shallow
 )
+```
 
+어레이리스트 형식으로 스테이트들을 정렬하고 업데이트에 사용하는 방식이다
+```
 // 어레이리스트로 고르기, 어레이리스트에 지정된 preys랑 friends값이 변경되면 스테이트 재설정
 const [preys, friends] = useFirstStore(
   (state) => [state.preys, state.friends],
   shallow
 )
+```
 
+맵 형식으로 지정하고 맵의 키가 변하는 경우조차도 스테이트를 리렌더링 하는 방식이다.
+```
 // 맵으로 설정됨. 맵들의 키가 변경된 경우에도 스테이트 재설정 발생
 const treats = useFirstStore((state) => Object.keys(state.treats), shallow)
 ```
