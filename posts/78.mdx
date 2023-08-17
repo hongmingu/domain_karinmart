@@ -1,0 +1,128 @@
+---
+title: django-ninja 에서 from_orm에 select_related 활용하여 쉽게 스키마 객체 쓰기
+description: 'django select_related를 이용한 쿼리 줄이기와 from_orm 활용'
+date: August 18 2023
+---
+django를 사용하다보면 불필요하게 dbquery가 많이 발생할 수 있다.
+
+이런경우에 무의미하게 쿼리가 많이 발생한다.
+
+django-ninja에서 from_orm을 오버라이딩해서 한번에 스키마를 생성할 수 있도록 만들자.
+
+### 사용할 스키마
+
+```
+class PostSchema(Schema):
+    user: UserSchema
+    title: str
+    updated: datetime
+    created: datetime
+```
+
+이 경우에 ```UserSchema``` 라는 부분 때문에 
+
+```
+post = Post.objects.get(pk=1)
+post_schema = PostSchema(post)
+```
+로 가져오는 post_schema가 정상적으로 작동하지 않는다. 저 모델이
+
+```
+class Post(models.Model):
+    user = models.ForeignKey(
+        UserModel, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    title = models.TextField(max_length=200)
+    updated = models.DateTimeField(auto_now=True)
+    created = models.DateTimeField(auto_now_add=True)
+```
+이런 경우에 user에 들어가는 것은 User객체도 아니고 단지 ForeignKey가 몇번인지 그러니까 UserModel의 pk값이 무엇인지 들어가기 때문이다. 
+
+근데 이걸 그때그때 
+
+user를 따로 ```UserSchema(post.user)```에 넣어서 처리하는 것은 여간 귀찮은 것이 아니다. 
+
+그래서 from_orm을 오버라이딩 하여 처리하도록 하자.
+
+### from_orm 오버라이딩
+
+```
+class UserSchema(Schema):
+    username: str
+    email: str
+    nickname: str
+
+class PostSchema(Schema):
+    user: UserSchema
+    title: str
+    updated: datetime
+    created: datetime
+
+    @classmethod
+    def from_orm(cls, orm_instance):
+        # from_orm에서 직접 스키마객체를 가져온다.
+        user_schema = UserSchema(
+            username=orm_instance.user.username,
+            email=orm_instance.user.email,
+            nickname=orm_instance.user.userprofile.nickname
+        )
+
+        # 리턴값을 설정
+        return cls(
+            user=user_schema,
+            title=orm_instance.title,
+            updated=orm_instance.updated,
+            created=orm_instance.created
+        )
+```
+
+코드를 보면 이해할 수 있듯 from_orm에서 orm_instance를 직접 받아서 
+```
+        user_schema = UserSchema(
+            username=orm_instance.user.username,
+            email=orm_instance.user.email,
+            nickname=orm_instance.user.userprofile.nickname
+        )
+```
+이걸 생성해서 
+```
+            user=user_schema,
+```
+
+이런식으로 직접 넣어준다. 
+
+이러면 밖에선 
+
+```
+post = Post.objects.get(pk=1)
+post_schema = PostSchema(post)
+```
+
+이런식으로 써도 제대로 값들이 배치되어 나오게 되는 것이다.
+
+근데 여기서 하나 더 아쉬운 점이 있다. 
+
+```
+        user_schema = UserSchema(
+            username=orm_instance.user.username,
+            email=orm_instance.user.email,
+            nickname=orm_instance.user.userprofile.nickname
+        )
+```
+
+이부분을 보면 orm_instance를 가져온 후 그거에서 ```orm_instance.user``` 또는 ```orm_instance.user.userprofile```이라고 또 데이터베이스 쿼리를 진행한다
+이럴때 select_related를 쓰는 것이다.
+
+### select_related 사용하기
+
+사용법은 매우 간단하다.
+
+
+```
+post = Post.objects.select_related('user', 'user__userprofile').get(pk=1)
+post_schema = PostSchema(post)
+```
+
+보이는가? 저 것만 넣어주면 이제 한번에 post와 user, userprofile까지 줄줄이 가져오므로 또 db쿼리를 날릴 필요성이 없어진다.
+
+이렇게 사용하면 된다. 주로 ForeignKey와 OneToOneField로 연결되어있을때 효과를 발휘한다.

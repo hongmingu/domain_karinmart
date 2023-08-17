@@ -16,8 +16,8 @@ import time
 import subprocess
 
 def change_wallpaper():
-    folder = "/path/to/your/images"  # 여기에 이미지 폴더 경로를 입력합니다.
-    image = random.choice(os.listdir(folder))  # 폴더 내에서 무작위 이미지를 선택합니다.
+    folder = "/path/to/your/images"  # 여기에 이미지 폴더 경로를 입력한다.
+    image = random.choice(os.listdir(folder))  # 폴더 내에서 무작위 이미지를 선택한다.
     image_path = os.path.join(folder, image)
 
     script = """
@@ -71,13 +71,13 @@ from tkinter import messagebox
 def signal_handler(sig, frame):
     # 터미널이 아닌 GUI 창에 메시지를 표시하려면 tkinter를 사용
     root = tk.Tk()
-    root.withdraw()  # 빈 창을 숨깁니다.
+    root.withdraw()  # 빈 창 숨기기.
     if messagebox.askokcancel("Quit", "Your script is still running. Do you want to quit?"):
         sys.exit(0)
     else:
         root.destroy()
 
-# SIGTERM 시그널을 처리하도록 핸들러를 등록합니다.
+# SIGTERM 시그널을 처리하도록 핸들러를 등록한다.
 signal.signal(signal.SIGTERM, signal_handler)
 
 while True:
@@ -105,11 +105,11 @@ def signal_handler(sig, frame):
     label = tk.Label(window, text="Your script is still running. Do you want to quit?")
     label.pack()
 
-    # 종료 버튼을 추가. 이 버튼을 클릭하면 스크립트가 종료됩니다.
+    # 종료 버튼을 추가. 이 버튼을 클릭하면 스크립트가 종료된다.
     quit_button = tk.Button(window, text="Quit", command=sys.exit)
     quit_button.pack()
 
-    # 계속하기 버튼을 추가. 이 버튼을 클릭하면 알림 창만 닫힙니다.
+    # 계속하기 버튼을 추가. 이 버튼을 클릭하면 알림 창만 닫힌다.
     continue_button = tk.Button(window, text="Continue", command=window.destroy)
     continue_button.pack()
 

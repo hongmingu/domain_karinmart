@@ -237,8 +237,8 @@ y_train = Rumale::Numo::DFloat.asarray(sizes)
 model = Rumale::LinearModel::LinearRegression.new
 model.fit(x_train, y_train)
 
-# 이제 모델을 사용하여 패킷 크기를 예측할 수 있습니다.
-# 예를 들어, TCP 패킷의 크기를 예측하려면:
+# 이제 모델을 사용하여 패킷 크기를 예측할 수 있다.
+# TCP 패킷의 크기를 예측
 tcp_hash = "TCP".hash
 predicted_size = model.predict(Rumale::Numo::DFloat.asarray([tcp_hash]).expand_dims(1))
 
