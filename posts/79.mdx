@@ -1,0 +1,89 @@
+---
+title: django 의 Q객체 사용법
+description: 'Q객체 사용법에 대해 알아보자'
+date: August 20 2023
+---
+django를 사용하다보면 ```SomeModel.objects.filter(여기이자리)``` 에다가 여러가지 복잡한 조건을 넣을 필요가 있을 때가 있다.
+
+그리고 이 조건문이 또다른 조건문에 의해 설정될 수도 있다. 그렇게 되면 코드가 말도 못하게 복잡해진다.
+
+예를들어 대충 
+
+```
+queryset = CocorazziPost.objects.filter((title__icontain=q | content__icontains=q) & category=c).order_by("-pk")
+```
+
+이런 코드가 있다고 생각해보자.
+그러면 이 코드 안에 3개의 조건문이 들어가게 된다. 
+
+3개만 들어가면 다행이다. 
+
+이런 경우도 생각해보자
+
+```
+
+if some_condition > 1000:
+    queryset = CocorazziPost.objects.filter((title__icontain=q | content__icontains=q) & category=c).order_by("-pk")
+
+elif some_condition2 < 2000:
+    queryset = CocorazziPost.objects.filter((title__icontain=q | content__icontains=q)).order_by("-pk")
+... 계속 반복
+```
+
+이렇게 코드가 복잡해지게 되면 조건문과 여러가지 옵션이 계속해서 바뀌게 된다. 
+
+그런데 ```queryset = CocorazziPost.objects.filter().order_by("-pk")```  이 부분들은 계속해서 반복이 발생한다.
+
+이제 Q객체를 이용해 이 코드의 반복을 줄여보자
+
+### Q객체 활용하기
+
+Q객체는 django에서 복잡한 쿼리를 단순히 코딩하듯이 처리할 수 있게 해주는 도구라고 이해하면 편하다.
+
+위의 코드를 Q객체를 이용해서 바꿔보자
+
+```
+from django.db.models import Q
+
+queryset = CocorazziPost.objects.filter(
+    Q(title__icontains=q) | Q(content__icontains=q) & Q(category=c)
+).order_by("-pk")
+```
+
+이렇게 바꾸면 된다. 근데 이렇게 하면 뭐가 좋냐고 할 수 있다.
+
+그건 여러가지 기본적인 사용방법은 생략하고 바로 여기에서 나온다. Q를 이용해 filter안에 들어갈 쿼리를 다른 파이썬 문법처럼 처리할 수 있다든 것이 아주 큰 장점이다.
+
+### Q쿼리 생성해보기
+
+```
+conditions = Q()
+
+if input_title:
+    conditions |= Q(title__icontains=user_input_title)
+
+if input_description:
+    conditions |= Q(description__icontains=user_input_description)
+
+queryset = YourPost.objects.filter(conditions)
+```
+
+이런식으로 처리할 수가 있다. ```|=```를 이용해서 여러가지 쿼리를 or방식을 통해서 결합시켰다.
+
+and역시 가능하다. ```&=``` 를 이용하면 된다.
+
+```
+conditions = Q()
+
+if input_title:
+    conditions &= Q(title__icontains=user_input_title)
+
+if input_description:
+    conditions &= Q(description__icontains=user_input_description)
+
+queryset = YourPost.objects.filter(conditions)
+```
+
+이러면 실제로는 and연산자가 q쿼리들 사이에 사용되었다고 이해할 수 있다.
+
+이걸 영어로는 Q objcet 라고 표현한다고 한다.
