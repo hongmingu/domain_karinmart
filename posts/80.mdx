@@ -1,0 +1,98 @@
+---
+title: lambda에 django 올려서 사용하기
+description: 'Zappa 없이 lambda django 사용하기'
+date: August 23 2023
+---
+
+django를 AWS lambda에 올려서 사용하려면 주로 zappa를 사용한다.
+
+zappa는 https://github.com/zappa/Zappa 여기에서 확인할 수 있다.
+
+하지만 zappa에는 단점이 있다.
+
+### zappa의 단점
+
+1. 클라우드포메이션을 사용한다.
+2. 패키지부터 디플로이까지 조절이 안된다.
+
+물론 zappa도 package명령어를 준다. 하지만 역시나 zappa에 종속된 명령어 이므로 마음대로 하기가 어렵다.
+게다가 dependencies 역시 따로 관리해야 하니 여간 귀찮은 것이 아니다.
+
+테라폼으로 업로드하고 싶거나 아니면 다른 도구에 SAM등 다른 도구에 연결해서 쓰려고 하면 고려해야 할 게 많아져서 복잡도만 증가한다.
+
+### lambda의 문제
+
+lambda는 handler를 설정해줘야 한다.
+
+그러므로 wsgi를 통해 돌아가는 django나 flask같은 모델은 그에 맞게 handler를 설정해줘야 하는데 이것만 심플하게 해주는 라이브러리가 흔치 않다.
+
+실제로 zappa생태계가 굉장히 크고 lambda에 django나 flask를 직접 올려서 돌릴만한 필요성이 크지 않기 때문인지 관련된 라이브러리가 정말 찾기 어렵다.
+
+### apig-wsgi 사용
+
+https://github.com/adamchainz/apig-wsgi
+
+이 라이브러리를 사용해보자
+
+저 라이브러리는 wsgi를 lambda에서 돌아갈 수 있는 형태로 변환시켜준다.
+
+문서를 조금만 살펴보자
+
+#### binary_support
+
+바이너리 서포트를 해준다.
+
+해당 문장은 binary_support 설정에 관한 설명입니다. 여기서 언급하는 binary_support는 AWS Lambda를 이용하여 API Gateway나 ALB 위에서 WSGI 애플리케이션을 실행할 때 바이너리 응답을 지원할 것인지에 대한 설정을 의미합니다.
+
+문장을 세부적으로 해석해보면:
+
+binary_support는 바이너리 응답을 지원할 것인지 설정하는데 사용된다.
+기본값은 None이며 이 경우 이벤트의 형식 버전을 기반으로 자동으로 바이너리 버전을 결정해준다.
+버전이 2면 기본값은 True로 바이너리 응답이 지원되고 1의 경우 기본값은 False라서 바이너리 응답이 지원되질 않는다.
+
+바이너리 데이터는 이미지나 동영상 그런걸 의미하는데 django처럼 웹서버로 사용할때 바이너리 데이터를 사용하게 되면 비용이 급증할 것이므로 난 False로 놓고 사용한다.
+
+#### request 객체 속성 이용
+
+AWS API Gateway로부터의 이벤트가 특정 키(requestContext)를 포함하고 있다면 그 정보를 WSGI 환경에선 environ['apig_wsgi.request_context'] 이런식으로 쓰면 된다.
+
+만약 API Gateway로부터 온 이벤트가 requestContext 키를 포함하고 있으면 apig_wsgi.request_context 키를 사용하여 접근 가능해서 쓰면 된다.
+실례로는 WSGI 애플리케이션 내에서 environ['apig_wsgi.request_context']를 사용하면 된다.
+
+애플리케이션 내부 헤더들을 확인하려면 WSGI 환경의 apgi_wsgi.multi_value_headers 키를 사용한다. 
+만약 여러 헤더 값들이 활성화되어 있다면 이 키의 값은 True가 되고 그렇지 않다면 False가 된다.
+
+실제로 wsgi.py를 이렇게 사용하면된다.
+
+### wsgi.py 예시
+
+```
+import json
+import os
+
+from typing import Any
+from typing import cast
+from django.core.wsgi import get_wsgi_application
+
+from apig_wsgi import make_lambda_handler
+from apig_wsgi.compat import WSGIApplication
+
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'minor.settings')
+
+# 여기 아래가 새로 추가된 부분.
+application = cast(  # 힌트를 확실하게 django-stubs에 준다
+    WSGIApplication, get_wsgi_application()
+)
+apig_wsgi_handler = make_lambda_handler(application, binary_support=True)
+
+
+# application = get_wsgi_application()
+
+def lambda_handler(event: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+    print(json.dumps(event, indent=2, sort_keys=True))
+    response = apig_wsgi_handler(event, context)
+    return response
+```
+
+여기에서 주어진 핸들러를 람다에 지정해주면 된다.
