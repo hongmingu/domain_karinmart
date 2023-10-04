@@ -20,7 +20,7 @@ class MyDocument extends Document {
           <script
             async
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8253099368332750"
-            crossorigin="anonymous"
+            crossOrigin="anonymous"
           ></script>
         </Head>
         <body
@@ -31,7 +31,7 @@ class MyDocument extends Document {
               src="https://www.googletagmanager.com/ns.html?id=GTM-NZLD9MJ7"
               height="0"
               width="0"
-              style="display:none;visibility:hidden"
+              style={{ display: 'none', visibility: 'hidden' }}
             ></iframe>
           </noscript>
           <Main />
