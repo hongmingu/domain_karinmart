@@ -22,6 +22,19 @@ class MyDocument extends Document {
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8253099368332750"
             crossOrigin="anonymous"
           ></script>
+
+          
+          <script async src="https://www.googletagmanager.com/gtag/js?id=G-G2Q4R8STZ2"></script>
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', 'G-G2Q4R8STZ2');
+              `,
+            }}
+          />
         </Head>
         <body
           className={`antialiased text-lg bg-white dark:bg-gray-900 dark:text-white leading-base`}
