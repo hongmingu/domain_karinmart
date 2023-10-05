@@ -17,11 +17,11 @@ class MyDocument extends Document {
               `,
             }}
           />
-          {/* <script
+          <script
             async
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8253099368332750"
             crossOrigin="anonymous"
-          ></script> */}
+          ></script>
         </Head>
         <body
           className={`antialiased text-lg bg-white dark:bg-gray-900 dark:text-white leading-base`}
